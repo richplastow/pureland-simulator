@@ -801,7 +801,7 @@ both the folding and the drag to an angle.
    with the smaller-side rule, and a session cut as a sheet, with Agent
    QA pinning every design's sheet by hash. Visible proof: Presentation
    Mode is unchanged.
-2. [Plan 16, Sandbox Mode shows a printed lattice](./16-sandbox-mode.md):
+2. [Plan 16, Sandbox Mode shows a printed lattice](../done/16-sandbox-mode.md):
    the mode and pattern radios, plain lines on both sides, and the
    stepper walking a sheet rather than a design. Visible proof: choosing
    Sandbox unfolds the design and prints the lattice.

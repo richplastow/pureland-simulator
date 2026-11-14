@@ -1,9 +1,10 @@
 /**
  * @fileoverview
  * The paper sheet: a two-tone, flat-shaded mesh with a fine grain on both
- * sides, turned to its design's starting pose and posed along its sequence
- * of folds and turn-overs, with its crease pattern printed on both sides,
- * whose front colour fades to another on request.
+ * sides, turned to its sheet's starting pose and posed along its sequence
+ * of folds and turn-overs, with its printed lines, a design's crease
+ * pattern or a pattern's lattice, on both sides, whose front colour fades
+ * to another on request.
  */
 
 import {
@@ -40,7 +41,7 @@ const PAPER_BACK_COLOR = 0xf4f1ea; // off-white, whatever the front's colour
  *   strip is two triangles joining the edges of two faces at a crease.
  * - The front, back and two fold-line meshes share one geometry, whose
  *   positions are rewritten in place as the paper folds.
- * - Each fold-line mesh shows the sheet's crease pattern on its side,
+ * - Each fold-line mesh shows the sheet's printed lines on its side,
  *   drawn into a canvas of its own, through UVs that follow sheet
  *   coordinates, so each back line lies beneath its front line.
  *   Transparent, each draws after the opaque paper, at the depth of its
@@ -60,10 +61,10 @@ const PAPER_BACK_COLOR = 0xf4f1ea; // off-white, whatever the front's colour
  *   drag spins; `leanGroup`, within it, which leans the whole design about
  *   the line of sight; `turnGroup`, within that, which turns the paper over
  *   about the design's own upright axis, leaned with it; `startGroup`,
- *   within that, which turns the sheet to its design's starting pose, its
+ *   within that, which turns the sheet to its starting pose, its
  *   side about its upright axis and then its roll about the line of sight;
  *   and `stretchGroup`, innermost, whose scale stretches the flat sheet
- *   between two designs' shapes. Each group's transform is then free for
+ *   between two sheets' shapes. Each group's transform is then free for
  *   its own job, and the pose, outside the stretch, turns a part-stretched
  *   sheet without shearing it.
  * - The front's colour fades from the one showing to another through two
@@ -90,7 +91,7 @@ const PAPER_BACK_COLOR = 0xf4f1ea; // off-white, whatever the front's colour
  *   setLinesVisibility(), which fades both sides' fold lines;
  *   setSequencePosition(), which poses the paper along its sequence of
  *   steps and turns it over;
- *   and setSheet(), which swaps in another design's sheet.
+ *   and setSheet(), which swaps in another sheet.
  */
 export const createPaper = (frontColor, radiusMeters, sheet) => {
   let shown = createSheetGeometry(radiusMeters, sheet);
@@ -213,7 +214,7 @@ export const createPaper = (frontColor, radiusMeters, sheet) => {
    *   into `turnGroup`'s rotation about its upright axis, which passes
    *   through the origin, where the folded shape stays centred.
    * - Allocates nothing, so it is safe on the per-frame path.
-   * @param sequencePosition From 0 (flat) to the design's step count:
+   * @param sequencePosition From 0 (flat) to the sheet's step count:
    *   whole steps done, plus the linear progress through the next.
    */
   const setSequencePosition = (sequencePosition) => {
@@ -222,7 +223,7 @@ export const createPaper = (frontColor, radiusMeters, sheet) => {
     turnGroup.rotation.y = viewTurnRadiansAt(sequencePosition, shown.sheet);
   };
 
-  /** #### Swaps in another design's sheet, posed flat
+  /** #### Swaps in another sheet, a design's or a pattern's, posed flat
    * - Gives every mesh the new geometry, then disposes of the old one,
    *   which frees its attributes on the GPU; the materials stay.
    * - Redraws both sides' fold-line canvases for the new sheet, gives each
@@ -232,9 +233,9 @@ export const createPaper = (frontColor, radiusMeters, sheet) => {
    *   canvas of another size.
    * - Refits the grain to the new sheet, at the stretch scale written so
    *   far; call fitGrain() again once the new stretch scale is written.
-   * - Allocates, so call it only when the design changes, at rest, with
+   * - Allocates, so call it only when the sheet changes, at rest, with
    *   the fold lines hidden.
-   * @param nextSheet The sheet that cutSheet() returns for the new design.
+   * @param nextSheet The sheet that cutSheet() or cutSession() returns.
    */
   const setSheet = (nextSheet) => {
     const oldGeometry = shown.geometry;

@@ -64,10 +64,14 @@ export const TOLERANCE_METERS = 1e-9;
  *   as leanOf() reads it, which cuts nothing; an optional `start`, its
  *   starting pose, as startOf() reads it; and `steps`, each a fold, in the
  *   view frame, or a turn-over.
- * @returns The sheet: `bridges`; `centres`, one per stage from 0 (flat) to
- *   the fold count; `creaseLines`; `designId`; `faces`; `folds`, in the
- *   front's terms, whose `layers` name a fold by its index in `folds`;
- *   `heightMeters`; `steps`, one per step of the design, each with
+ * @returns The sheet: `aspect`, the design's; `bridges`; `centres`, one
+ *   per stage from 0 (flat) to the fold count; `creaseLines`; `designId`;
+ *   `faces`; `finishedPosition`, the design's step count, where the
+ *   stepper treats the model as finished; `folds`, in the front's terms,
+ *   whose `layers` name a fold by its index in `folds`; `heightMeters`;
+ *   `leanRadians`, as leanOf() reads it, in radians; `printedLines`, the
+ *   lines printed on the sheet, the same array as `creaseLines`; `start`,
+ *   as startOf() reads it; `steps`, one per step of the design, each with
  *   `foldsBefore`, the folds done before it, `kind`, and
  *   `turnOversBefore`, the turn-overs done before it; and `widthMeters`.
  */
@@ -110,6 +114,7 @@ export const cutSheet = (design) => {
   }
 
   return {
+    aspect: design.aspect,
     bridges: findBridges(faces),
     centres: stageCentres(faces, folds, frame),
     creaseLines,
@@ -120,8 +125,12 @@ export const cutSheet = (design) => {
       placements,
       polygon,
     })),
+    finishedPosition: design.steps.length,
     folds,
     heightMeters,
+    leanRadians,
+    printedLines: creaseLines,
+    start: startOf(design),
     steps,
     widthMeters,
   };

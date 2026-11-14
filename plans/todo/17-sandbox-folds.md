@@ -7,7 +7,7 @@ type: plan
 ## Context
 
 - The third of the five Basic Sandbox Mode plans, on
-  [Plan 16](./16-sandbox-mode.md)'s printed lattice, and before
+  [Plan 16](../done/16-sandbox-mode.md)'s printed lattice, and before
   [Plan 18](./18-fold-angle.md), which adds the drag to an angle. It
   delivers the toy: pick a line, press a Fold Button, and the paper
   folds flat along it; Undo, Redo and Unfold walk back and forth.

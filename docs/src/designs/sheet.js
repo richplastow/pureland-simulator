@@ -2,8 +2,8 @@
  * @fileoverview
  * The sheet a design folds from: its size, set by its shape; its starting
  * pose, set by its roll and the side towards the viewer; and its lean, which
- * turns the whole design; and the stretch and turn from one design's sheet
- * to another's.
+ * turns the whole design; and the stretch and turn from one cut sheet, a
+ * design's or a pattern's, to another.
  */
 
 import { smoothstep } from "../fold/easing.js";
@@ -56,23 +56,22 @@ export const sheetSize = (aspect) => {
  */
 export const startOf = (design) => design.start ?? DEFAULT_START;
 
-/** #### Writes the lean that turns the old design's lean into the new one's
- * - Eases the lean, `z`, from the old design's to the new one's, by the
+/** #### Writes the lean that turns the old sheet's lean into the new one's
+ * - Eases the lean, `z`, from the old sheet's to the new one's, by the
  *   stretch's eased progress, as writeStartPose() eases the start; it is
- *   exactly the new design's lean once the stretch is done.
+ *   exactly the new sheet's lean once the stretch is done.
  * - `z` is anticlockwise as the viewer sees it, in radians.
  * - Allocates nothing, so it is safe on the per-frame path.
  * - Pure maths, with no DOM or GPU access.
- * @param designs The designs, keyed by `id`, each with an optional
- *   `leanRadians`.
  * @param rotation The object to write `z` to, such as a group's
  *   `rotation`.
- * @param state The sequence state: `designId`, `stretchFromId` and
+ * @param sheets The cut sheets, keyed by id, each with its `leanRadians`.
+ * @param state The sequence state: `sheetId`, `stretchFromId` and
  *   `stretchProgress`, from 0 to 1.
  */
-export const writeLean = (designs, rotation, state) => {
-  const from = leanOf(designs[state.stretchFromId]);
-  const to = leanOf(designs[state.designId]);
+export const writeLean = (rotation, sheets, state) => {
+  const from = sheets[state.stretchFromId].leanRadians;
+  const to = sheets[state.sheetId].leanRadians;
 
   // Mixed as `from × (1 − p) + to × p`, which gives `to` exactly at p = 1.
   const p = smoothstep(state.stretchProgress);
@@ -81,7 +80,7 @@ export const writeLean = (designs, rotation, state) => {
 
 /** #### Writes the turn that takes the flat sheet from the old pose to the new
  * - Eases the side's turn, `y`, and the roll, `z`, together, from the old
- *   design's start to the new one's, by the stretch's eased progress, so a
+ *   sheet's start to the new one's, by the stretch's eased progress, so a
  *   sheet that must both turn over and roll does both in one motion; both
  *   are exactly the new start's once the stretch is done.
  * - `y` is 0 for the front and −π for the back, so the sheet turns as a
@@ -89,16 +88,15 @@ export const writeLean = (designs, rotation, state) => {
  *   Both are radians, for a rotation of order `ZYX`.
  * - Allocates nothing, so it is safe on the per-frame path.
  * - Pure maths, with no DOM or GPU access.
- * @param designs The designs, keyed by `id`, each with an optional
- *   `start`.
  * @param rotation The object to write `y` and `z` to, such as a group's
  *   `rotation`.
- * @param state The sequence state: `designId`, `stretchFromId` and
+ * @param sheets The cut sheets, keyed by id, each with its `start`.
+ * @param state The sequence state: `sheetId`, `stretchFromId` and
  *   `stretchProgress`, from 0 to 1.
  */
-export const writeStartPose = (designs, rotation, state) => {
-  const from = startOf(designs[state.stretchFromId]);
-  const to = startOf(designs[state.designId]);
+export const writeStartPose = (rotation, sheets, state) => {
+  const from = sheets[state.stretchFromId].start;
+  const to = sheets[state.sheetId].start;
 
   // Mixed as `from × (1 − p) + to × p`, which gives `to` exactly at p = 1.
   const p = smoothstep(state.stretchProgress);
@@ -110,23 +108,22 @@ export const writeStartPose = (designs, rotation, state) => {
  * - Eases each of the width and height from the old sheet's to the new's,
  *   and divides by the new sheet's, so the new sheet, scaled, shows the
  *   stretch; both scales are exactly 1 once the stretch is done.
- * - Works out each size inline, as sheetSize() does, since sheetSize()
- *   returns a new object.
  * - Allocates nothing, so it is safe on the per-frame path.
  * - Pure maths, with no DOM or GPU access.
- * @param designs The designs, keyed by `id`, each with its `aspect`.
  * @param scale The object to write `x` and `y` to, such as a group's
  *   `scale`.
- * @param state The sequence state: `designId`, `stretchFromId` and
+ * @param sheets The cut sheets, keyed by id, each with its `heightMeters`
+ *   and `widthMeters`, in metres.
+ * @param state The sequence state: `sheetId`, `stretchFromId` and
  *   `stretchProgress`, from 0 to 1.
  */
-export const writeStretchScale = (designs, scale, state) => {
-  const fromAspect = designs[state.stretchFromId].aspect;
-  const toAspect = designs[state.designId].aspect;
-  const fromHeightMeters = Math.sqrt(SHEET_AREA_SQUARE_METERS / fromAspect);
-  const toHeightMeters = Math.sqrt(SHEET_AREA_SQUARE_METERS / toAspect);
-  const fromWidthMeters = fromHeightMeters * fromAspect;
-  const toWidthMeters = toHeightMeters * toAspect;
+export const writeStretchScale = (scale, sheets, state) => {
+  const from = sheets[state.stretchFromId];
+  const to = sheets[state.sheetId];
+  const fromHeightMeters = from.heightMeters;
+  const fromWidthMeters = from.widthMeters;
+  const toHeightMeters = to.heightMeters;
+  const toWidthMeters = to.widthMeters;
 
   // Mixed as `from × (1 − p) + to × p`, which gives `to` exactly at p = 1.
   const p = smoothstep(state.stretchProgress);

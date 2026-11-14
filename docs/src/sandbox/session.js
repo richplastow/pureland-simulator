@@ -5,6 +5,7 @@
 
 import { createFold } from "../designs/steps.js";
 import { cutSheet } from "../fold/engine.js";
+import { printedLines } from "./lattice.js";
 
 /** #### Creates the empty session, before any fold
  * - A session is `{ folds }`, frozen, each fold `{ from, targetRadians, to,
@@ -17,23 +18,32 @@ import { cutSheet } from "../fold/engine.js";
 export const createSession = () => Object.freeze({ folds: Object.freeze([]) });
 
 /** #### Cuts a session's folds into a sheet, as a design of the pattern
- * - Builds the design `{ aspect, id, steps }`, with no `start`, one fold
- *   step per fold through every layer, and cuts it with cutSheet(), which
- *   throws as it does for a design: when a fold moves nothing, say.
+ * - Builds the design `{ aspect, id, steps }`, with no `start` and no
+ *   lean, one fold step per fold through every layer, and cuts it with
+ *   cutSheet(), which throws as it does for a design: when a fold moves
+ *   nothing, say.
+ * - The sheet is never finished, so its `finishedPosition` is null and the
+ *   stepper never fades its lines out at rest, and it prints the pattern's
+ *   lattice, from printedLines(), in place of its crease lines.
  * - Pure maths, with no DOM or GPU access.
- * @param pattern The pattern folded, from `PATTERNS`: its `aspect` and
- *   `id`, which becomes the sheet's `designId`.
+ * @param pattern The pattern folded, from `PATTERNS`: its `aspect`, its
+ *   `id`, which becomes the sheet's `designId`, and the lattice's
+ *   `diagonals` and `spacingFraction`.
  * @param session The session, from createSession() or foldAt().
- * @returns The sheet, as cutSheet() returns it.
+ * @returns The sheet, as cutSheet() returns it, with `finishedPosition`
+ *   null and `printedLines` the pattern's, each typed `"plain"`.
  */
-export const cutSession = (pattern, session) =>
-  cutSheet({
+export const cutSession = (pattern, session) => ({
+  ...cutSheet({
     aspect: pattern.aspect,
     id: pattern.id,
     steps: session.folds.map(({ from, targetRadians, to, type }) =>
       createFold(from, "all", to, type, { targetRadians }),
     ),
-  });
+  }),
+  finishedPosition: null,
+  printedLines: printedLines(pattern),
+});
 
 /** #### Returns a new session with a fold made at a position in the old one
  * - Keeps the old session's first `position` folds, then the new fold, so

@@ -44,6 +44,9 @@ const point = new Float64Array(3);
  *   folded shape stays centred on the origin.
  * - Vertices run face by face, around each face's polygon, in the folded
  *   plane as seen from the front.
+ * - A sheet with no folds, such as a pattern's flat sheet, poses flat at
+ *   every position: each face at its stage-0 placement and height, less
+ *   the stage-0 centre.
  * - Allocates nothing, so it is safe on the per-frame path.
  * - Pure maths, with no DOM or GPU access.
  * @param positions An array of three numbers per vertex, in metres,
@@ -54,6 +57,11 @@ const point = new Float64Array(3);
  */
 export const writePaperPositions = (positions, sequencePosition, sheet) => {
   const { centres, faces, folds } = sheet;
+  if (folds.length === 0) {
+    writeFlatPositions(positions, sheet);
+    return;
+  }
+
   const foldPosition = foldPositionAt(sequencePosition, sheet);
   const foldIndex = Math.max(
     0,
@@ -149,9 +157,12 @@ export const writePaperPositions = (positions, sequencePosition, sheet) => {
  * @param sequencePosition From 0 (flat) to the step count: whole steps
  *   done, plus the linear progress through the next.
  * @param sheet The sheet that cutSheet() returns.
- * @returns From 0 (flat) to the fold count.
+ * @returns From 0 (flat) to the fold count, and 0 for a sheet with no
+ *   steps.
  */
 export const foldPositionAt = (sequencePosition, sheet) => {
+  if (sheet.steps.length === 0) return 0;
+
   const stepIndex = stepIndexAt(sequencePosition, sheet);
   const step = sheet.steps[stepIndex];
   if (step.kind !== "fold") return step.foldsBefore;
@@ -198,9 +209,12 @@ export const maxPaperRadius = (sheet) => {
  * @param sequencePosition From 0 (flat) to the step count: whole steps
  *   done, plus the linear progress through the next.
  * @param sheet The sheet that cutSheet() returns.
- * @returns The turn, in radians, 0 before any turn-over.
+ * @returns The turn, in radians, 0 before any turn-over and for a sheet
+ *   with no steps.
  */
 export const viewTurnRadiansAt = (sequencePosition, sheet) => {
+  if (sheet.steps.length === 0) return 0;
+
   const stepIndex = stepIndexAt(sequencePosition, sheet);
   const step = sheet.steps[stepIndex];
   const turnOvers =
@@ -287,3 +301,39 @@ const stepIndexAt = (sequencePosition, sheet) =>
  * @returns 1 for a valley, towards +Z, or −1 for a mountain.
  */
 const turnSign = (fold) => (fold.type === "valley" ? 1 : -1);
+
+/** #### Writes every vertex of a sheet with no folds, posed flat
+ * - Each face at its stage-0 placement, raised by the paper's thickness
+ *   for each layer beneath it, less the stage-0 centre.
+ * - Allocates nothing, so it is safe on the per-frame path.
+ * @param positions An array of three numbers per vertex, in metres,
+ *   overwritten.
+ * @param sheet The sheet that cutSheet() returns, with no folds.
+ */
+const writeFlatPositions = (positions, sheet) => {
+  const { centres, faces } = sheet;
+  const centreX = centres[0][0];
+  const centreY = centres[0][1];
+
+  let vertex = 0;
+  for (let f = 0; f < faces.length; f++) {
+    const { layers, placements, polygon } = faces[f];
+
+    // Read by index: array destructuring would run an iterator.
+    const placement = placements[0];
+    const a = placement[0];
+    const b = placement[1];
+    const c = placement[2];
+    const d = placement[3];
+    const tx = placement[4];
+    const ty = placement[5];
+    const z = PAPER_THICKNESS_METERS * (layers[0] - 1);
+    for (let i = 0; i < polygon.length; i++, vertex++) {
+      const x = polygon[i][0];
+      const y = polygon[i][1];
+      positions[3 * vertex] = a * x + c * y + tx - centreX;
+      positions[3 * vertex + 1] = b * x + d * y + ty - centreY;
+      positions[3 * vertex + 2] = z;
+    }
+  }
+};
