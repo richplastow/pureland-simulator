@@ -8,12 +8,14 @@ import { leanOf, sheetSize, startOf } from "../designs/sheet.js";
 const IDENTITY_PLACEMENT = Object.freeze([1, 0, 0, 1, 0, 0]);
 
 // Slivers left by rounding, smaller than a 10 µm square, are not paper:
-// neither a piece of a cut nor an overlap of two faces.
-const MIN_AREA_SQUARE_METERS = 1e-10;
+// neither a piece of a cut nor an overlap of two faces. Exported so the
+// sandbox's lattice judges a sliver exactly as a fold does.
+export const MIN_AREA_SQUARE_METERS = 1e-10;
 
 // A point this close to a line lies on it, and two points this close to
-// each other are one point.
-const TOLERANCE_METERS = 1e-9;
+// each other are one point. Exported so the sandbox's lattice judges a side
+// exactly as a fold does.
+export const TOLERANCE_METERS = 1e-9;
 
 /** #### Cuts a design's sheet into faces by running each of its folds once
  * - Reads the design's steps first, turning each fold from the view frame,
@@ -125,6 +127,89 @@ export const cutSheet = (design) => {
   };
 };
 
+/** #### Splits a convex polygon by a line, keeping one side
+ * - Exported so the sandbox's lattice clips exactly as a fold does.
+ * - Corners on the line belong to both sides.
+ * @param polygon The polygon's corners, `[x, y]`.
+ * @param sides Each corner's signed distance from the line, in metres.
+ * @param keep 1 to keep the positive side, −1 the negative side.
+ * @returns The kept piece, or null if it is too small to be paper.
+ */
+export const clipPolygon = (polygon, sides, keep) => {
+  const piece = [];
+  polygon.forEach((point, i) => {
+    const j = (i + 1) % polygon.length;
+    const s = keep * sides[i];
+    const t = keep * sides[j];
+    if (s >= -TOLERANCE_METERS) piece.push(point);
+    if (
+      (s > TOLERANCE_METERS && t < -TOLERANCE_METERS) ||
+      (s < -TOLERANCE_METERS && t > TOLERANCE_METERS)
+    ) {
+      piece.push(pointBetween(point, polygon[j], s, t));
+    }
+  });
+
+  return piece.length > 2 &&
+    Math.abs(signedArea(piece)) > MIN_AREA_SQUARE_METERS
+    ? piece
+    : null;
+};
+
+/** #### Finds where a line crosses a convex polygon it splits
+ * - Exported so the sandbox's lattice finds where a line meets the paper as
+ *   a fold does.
+ * - Takes the corners on the line and the points where edges cross it, as
+ *   clipPolygon() finds them.
+ * @param polygon The polygon's corners, `[x, y]`.
+ * @param sides Each corner's signed distance from the line, in metres.
+ * @returns The crossing's two ends, `[x, y]`; for a polygon the line only
+ *   touches, the corners on the line, and none if it misses the polygon.
+ */
+export const crossingSegment = (polygon, sides) => {
+  const ends = [];
+  polygon.forEach((point, i) => {
+    const j = (i + 1) % polygon.length;
+    const s = sides[i];
+    const t = sides[j];
+    if (Math.abs(s) <= TOLERANCE_METERS) ends.push(point);
+    if (
+      (s > TOLERANCE_METERS && t < -TOLERANCE_METERS) ||
+      (s < -TOLERANCE_METERS && t > TOLERANCE_METERS)
+    ) {
+      ends.push(pointBetween(point, polygon[j], s, t));
+    }
+  });
+
+  return ends;
+};
+
+/** #### Places each face's polygon into the folded plane at one stage
+ * - Keeps the order of `faces`, and each polygon's corners in their order,
+ *   so the placed polygons pair with the faces one for one.
+ * - Allocates new arrays, so it is not for the per-frame path.
+ * - Pure maths, with no DOM or GPU access.
+ * @param sheet The sheet, from cutSheet(), with its `faces`.
+ * @param stage The stage, from 0 (flat) to the fold count.
+ * @returns Per face, its corners, `[x, y]` in metres, in the folded plane
+ *   as seen from the front.
+ */
+export const placedPolygons = (sheet, stage) =>
+  sheet.faces.map(({ placements, polygon }) =>
+    polygon.map((point) => place(placements[stage], point)),
+  );
+
+/** #### Returns a polygon's area, positive when it runs anticlockwise
+ * - Exported so the sandbox's lattice measures an area as a fold does.
+ * @param polygon The polygon's corners, `[x, y]` in metres.
+ * @returns The signed area, in square metres.
+ */
+export const signedArea = (polygon) =>
+  polygon.reduce((sum, [x, y], i) => {
+    const [nextX, nextY] = polygon[(i + 1) % polygon.length];
+    return sum + x * nextY - nextX * y;
+  }, 0) / 2;
+
 /** #### Returns true if a fold stops short of 180°, so is never pressed flat
  * @param fold One of a design's folds.
  * @returns True if the fold's `targetRadians` is under π.
@@ -233,34 +318,6 @@ const applyFold = (faces, foldIndex, sequence) => {
   return { creaseLines, faces: nextFaces };
 };
 
-/** #### Splits a convex polygon by a line, keeping one side
- * - Corners on the line belong to both sides.
- * @param polygon The polygon's corners, `[x, y]`.
- * @param sides Each corner's signed distance from the line, in metres.
- * @param keep 1 to keep the positive side, −1 the negative side.
- * @returns The kept piece, or null if it is too small to be paper.
- */
-const clipPolygon = (polygon, sides, keep) => {
-  const piece = [];
-  polygon.forEach((point, i) => {
-    const j = (i + 1) % polygon.length;
-    const s = keep * sides[i];
-    const t = keep * sides[j];
-    if (s >= -TOLERANCE_METERS) piece.push(point);
-    if (
-      (s > TOLERANCE_METERS && t < -TOLERANCE_METERS) ||
-      (s < -TOLERANCE_METERS && t > TOLERANCE_METERS)
-    ) {
-      piece.push(pointBetween(point, polygon[j], s, t));
-    }
-  });
-
-  return piece.length > 2 &&
-    Math.abs(signedArea(piece)) > MIN_AREA_SQUARE_METERS
-    ? piece
-    : null;
-};
-
 /** #### Composes two placements, `outer` applied after `inner`
  * @param outer The placement applied second.
  * @param inner The placement applied first.
@@ -274,31 +331,6 @@ const compose = (outer, inner) => [
   outer[0] * inner[4] + outer[2] * inner[5] + outer[4],
   outer[1] * inner[4] + outer[3] * inner[5] + outer[5],
 ];
-
-/** #### Finds where a line crosses a convex polygon it splits
- * - Takes the corners on the line and the points where edges cross it, as
- *   clipPolygon() finds them.
- * @param polygon The polygon's corners, `[x, y]`.
- * @param sides Each corner's signed distance from the line, in metres.
- * @returns The crossing's two ends, `[x, y]`.
- */
-const crossingSegment = (polygon, sides) => {
-  const ends = [];
-  polygon.forEach((point, i) => {
-    const j = (i + 1) % polygon.length;
-    const s = sides[i];
-    const t = sides[j];
-    if (Math.abs(s) <= TOLERANCE_METERS) ends.push(point);
-    if (
-      (s > TOLERANCE_METERS && t < -TOLERANCE_METERS) ||
-      (s < -TOLERANCE_METERS && t > TOLERANCE_METERS)
-    ) {
-      ends.push(pointBetween(point, polygon[j], s, t));
-    }
-  });
-
-  return ends;
-};
 
 /** #### Finds every edge two faces share, as a bridging strip
  * @param faces The final faces.
@@ -545,16 +577,6 @@ const selectsFace = (layers, face) => {
 
   throw new Error(`Unknown layer selection: ${JSON.stringify(layers)}`);
 };
-
-/** #### Returns a polygon's area, positive when it runs anticlockwise
- * @param polygon The polygon's corners, `[x, y]` in metres.
- * @returns The signed area, in square metres.
- */
-const signedArea = (polygon) =>
-  polygon.reduce((sum, [x, y], i) => {
-    const [nextX, nextY] = polygon[(i + 1) % polygon.length];
-    return sum + x * nextY - nextX * y;
-  }, 0) / 2;
 
 /** #### Finds each face's layer at each stage, from what lies beneath it
  * - At each stage, in rank order from the back, a face sits one layer

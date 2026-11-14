@@ -7,7 +7,7 @@ type: plan
 ## Context
 
 - The second of the five Basic Sandbox Mode plans, after
-  [Plan 15](./15-lattice-engine.md), whose patterns and printed lines it
+  [Plan 15](../done/15-lattice-engine.md), whose patterns and printed lines it
   puts on the page, and before [Plan 17](./17-sandbox-folds.md), which
   folds them. It delivers the mode itself: a Presentation Mode and
   Sandbox Mode radio pair, pattern radios in place of the design radios,

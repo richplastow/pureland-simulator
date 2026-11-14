@@ -796,7 +796,7 @@ one could be accepted and the next rejected. The research's "Sandbox
 Mode folds" became two plans, 17 and 18, since one gate could not hold
 both the folding and the drag to an angle.
 
-1. [Plan 15, Lattice patterns and the sandbox sheet, in pure maths](./15-lattice-engine.md):
+1. [Plan 15, Lattice patterns and the sandbox sheet, in pure maths](../done/15-lattice-engine.md):
    the four patterns as data, the lattice's printed and foldable lines
    with the smaller-side rule, and a session cut as a sheet, with Agent
    QA pinning every design's sheet by hash. Visible proof: Presentation
