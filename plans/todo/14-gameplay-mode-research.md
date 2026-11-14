@@ -60,6 +60,17 @@ type: research
   viewer at all times, whatever the paper's orientation.
 - Fold Buttons can be hovered and clicked, and show `cursor: pointer` on
   hover.
+- A Fold Button is the Sandbox's design
+  ([Fold Buttons](./13-sandbox-mode-research.md#fold-buttons)): a circle
+  with an icon, no words, combining the fold's dashed or dash-dot-dot line
+  with a chevron for a mountain or a V for a valley. Its colours are
+  graphic, pure black, pure white and shades more vivid than the paper, so
+  it stands apart from the photorealistic paper, and they follow the side of
+  the paper facing the camera. A design's fold may go only one way, so its
+  line has one Fold Button; with plain lines and a choice of direction, it
+  has two, a mountain and a valley.
+- A click on a Fold Button folds the design's own angle for that fold:
+  flat, or 90° for the dart's wings.
 - A Fold Button normally sits over the centre point of its fold line, with
   three exceptions:
   1. **Overlap.** Two Fold Buttons would overlap, which the paper dart may
@@ -329,12 +340,12 @@ and a valley button per fold:
   [the live graph](#2-the-live-graph-and-availability-on-the-fly).
 - A design's fold direction is fixed in the front's terms, but the player
   sees the paper from either side, and a valley seen from the front is a
-  mountain seen from the back. The pair of buttons is better labelled
-  "towards me" and "away from me", as the Sandbox's pair is, than
-  mountain and valley, with the type worked out from which side of the
-  fold's face faces the camera.
-- The Yoshizawa dashes that leave the paper could move onto the buttons,
-  each button showing the pattern of the fold it makes.
+  mountain seen from the back. So the pair names mountain and valley as
+  the player sees the paper, as the Sandbox's Fold Buttons do, worked out
+  from which side faces the camera; when a spin brings the other side
+  round, the two swap designs.
+- The Yoshizawa dashes that leave the paper move onto the buttons: each
+  Fold Button's icon carries the pattern of the fold it makes.
 
 ### Fold Button anchors
 
@@ -493,7 +504,7 @@ part names its options and a recommendation, for discussion.
 
 ### 5. Fold Buttons as DOM buttons over the canvas
 
-- **Recommended: real `<button>`s**, as the Sandbox's direction pair is
+- **Recommended: real `<button>`s**, as the Sandbox's Fold Buttons are
   ([Picking a line](./13-sandbox-mode-research.md#3-picking-a-line-with-the-pointer)),
   one (or, with a direction choice, two) per available fold, positioned
   by projecting the fold's anchor to the screen each frame the paper
@@ -604,7 +615,7 @@ part names its options and a recommendation, for discussion.
 ### 8. Likely plans
 
 They follow the
-[Sandbox's plans](./13-sandbox-mode-research.md#9-likely-plans), and
+[Sandbox's plans](./13-sandbox-mode-research.md#9-the-plans), and
 build on its engine work, sandbox sheet, stepper and toolbar. Each ends
 in something the Lead Developer can QA in the browser; the seam between
 each pair is where one could be accepted and the next rejected.
@@ -623,7 +634,7 @@ each pair is where one could be accepted and the next rejected.
    and its messages. Visible proof: walk into a dart trap, lose a life,
    find the way out with a hint.
 4. **Plain lines and a direction choice**, if ruled in: the plain
-   printing and the direction pair come from the Sandbox, so this adds
+   printing and the Fold Button pair come from the Sandbox, so this adds
    the button pairs at each anchor and the direction feedback. It could
    land before 3 if the direction choice is settled first.
 
@@ -634,9 +645,12 @@ is drafted:
 
 1. **Plain lines and a direction choice: in or out?** It is the only way
    the yacht and the heart become puzzles. The Sandbox already builds
-   the plain printing and the direction pair, so the cost here is
-   doubled Fold Buttons and direction feedback of its own. Needed before
-   Plan 2 above, since it sets how many buttons a fold has.
+   the plain printing and the Fold Button pair, so the cost here is
+   doubled Fold Buttons and direction feedback of its own. Presentation
+   Mode keeps its dashes whatever this rules: a line shows its direction
+   only where the direction is fixed
+   ([Basic Sandbox Mode research](./13-sandbox-mode-research.md#4-the-sandbox-sheet-undo-redo-and-unfold)).
+   Needed before Plan 2 above, since it sets how many buttons a fold has.
 2. **How is a direction mistake reported?** At once, or at the end: see
    [The game layer](#6-the-game-layer). Needed before Plan 3.
 3. **Is a mirror-stacked dart finished?** The goal today matches layers
@@ -653,6 +667,10 @@ is drafted:
    when the model is nearly right. Is "no Fold Button left" enough of a
    signal there, or should the goal test's verdict ("not quite: a corner
    is under the wrong flap") be shown? Needed before Plan 3.
+7. **Dragging a Fold Button in Gameplay Mode?** In the Sandbox, a drag
+   chooses the fold's angle. Here each fold has its design's angle, and
+   any other leaves the goal: the drag could be off, or allowed and
+   judged. Needed before Plan 2.
 
 ## Sources
 
@@ -672,9 +690,32 @@ is drafted:
   the 24 px the swatches already follow.
 - [Wikipedia: Pureland origami](https://en.wikipedia.org/wiki/Pureland_origami).
 
+## Decision record
+
+No question of this file's own has been put to the Lead Developer yet.
+Four rulings on the
+[Basic Sandbox Mode research](./13-sandbox-mode-research.md#decision-record),
+from 2026-11-12 to 2026-11-14, bear on Gameplay Mode; their background,
+options and answers are recorded there in full.
+
+| Ruling | Date | What it means for Gameplay Mode |
+| --- | --- | --- |
+| [Q2. The direction buttons](./13-sandbox-mode-research.md#q2-the-direction-buttons) | 2026-11-12 | Fold Buttons take the Sandbox's design: circles with icons, mountain and valley as seen, graphic colours; one per one-way fold, two with a direction choice; a click folds the design's angle |
+| [Q7. Dragging to an angle](./13-sandbox-mode-research.md#q7-dragging-to-an-angle) | 2026-11-14 | A drag on a Fold Button chooses an angle in the Sandbox; whether it may here is this file's open question 7 |
+| [Q8. How far standing folds go](./13-sandbox-mode-research.md#q8-how-far-standing-folds-go) | 2026-11-14 | The Sandbox engine gains several standing folds, a stepping stone to the fold tree, which Gameplay Mode's engine shares |
+| [Q10. Lines in Presentation Mode](./13-sandbox-mode-research.md#q10-lines-in-presentation-mode) | 2026-11-14 | A line shows its direction only where the direction is fixed: Presentation Mode keeps its dashes whatever open question 1 rules |
+
 ## Audit
 
 - **2026-11-11T13:13:47Z** — **drafted**: the brief reorganised; three
   availability rules and every design's traps and anchors measured
   against the engine; an outline of the live graph, the gameplay sheet, DOM
   Fold Buttons and the game layer; six open questions.
+- **2026-11-12T17:31:09Z** — **revised**: Fold Buttons take the Sandbox's
+  design, icons named as the player sees the paper, one per one-way fold and
+  two with a direction choice; a click folds the design's angle; open
+  question 7, dragging in Gameplay Mode, added.
+- **2026-11-14T13:24:29Z** — **revised**: open question 1 notes that
+  Presentation Mode keeps its dashes, as the Sandbox research rules.
+- **2026-11-14T13:37:05Z** — **recorded**: the decision record added,
+  linking the four Sandbox rulings that bear on Gameplay Mode.
