@@ -805,7 +805,7 @@ both the folding and the drag to an angle.
    the mode and pattern radios, plain lines on both sides, and the
    stepper walking a sheet rather than a design. Visible proof: choosing
    Sandbox unfolds the design and prints the lattice.
-3. [Plan 17, Sandbox Mode folds](./17-sandbox-folds.md): picking a
+3. [Plan 17, Sandbox Mode folds](../done/17-sandbox-folds.md): picking a
    line by click or tap, the icon Fold Buttons coloured by the facing
    side, a click folding flat with an invisible sheet swap, Undo, Redo,
    Unfold and the shortcuts. Visible proof: the blintz by hand.

@@ -7,7 +7,7 @@ type: plan
 ## Context
 
 - The fourth of the five Basic Sandbox Mode plans, on
-  [Plan 17](./17-sandbox-folds.md)'s Fold Buttons, and before
+  [Plan 17](../done/17-sandbox-folds.md)'s Fold Buttons, and before
   [Plan 19](./19-export-design.md), which writes the angle into the
   export. It delivers the drag the research's ruling put in the first
   folding plan: a click folds flat, a drag chooses an angle, a ring

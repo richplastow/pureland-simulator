@@ -21,16 +21,23 @@ export const SPIN_RESET_SECONDS = 0.3;
  *   back is never more than half a turn. The spin itself is not changed:
  *   the first stepSpinReset() moves it from the equivalent.
  * - Restarts a reset under way from where the spin is.
+ * - Does nothing when the spin already shows the view at load, pitch 0
+ *   and a yaw of whole turns: a reset there would move nothing, yet, while
+ *   it ran, it would clear a pick each frame and refuse new ones, so a
+ *   double-click on a line would hide the Fold Buttons it had just shown.
  * - Pure maths: writes `reset` in place and allocates nothing.
  * @param reset The reset's state, mutated: `fromPitchRadians` and
  *   `fromYawRadians`, in radians, and `progress`, set to 0.
  * @param spin The spin, as `pitchRadians` and `yawRadians`.
  */
 export const startSpinReset = (reset, spin) => {
-  reset.fromPitchRadians = spin.pitchRadians;
-  reset.fromYawRadians =
+  const fromYawRadians =
     spin.yawRadians -
     FULL_TURN_RADIANS * Math.round(spin.yawRadians / FULL_TURN_RADIANS);
+  if (spin.pitchRadians === 0 && fromYawRadians === 0) return;
+
+  reset.fromPitchRadians = spin.pitchRadians;
+  reset.fromYawRadians = fromYawRadians;
   reset.progress = 0;
 };
 

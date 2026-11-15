@@ -19,7 +19,7 @@ type: plan
 - Nothing visible changes: Presentation Mode renders exactly as at
   `9b63c96`, which the Agent QA proves by hashing every design's cut
   sheet. [Plan 16](./16-sandbox-mode.md) then puts a pattern on the page,
-  and [Plan 17](../todo/17-sandbox-folds.md) folds it.
+  and [Plan 17](./17-sandbox-folds.md) folds it.
 - The rulings it builds on, all in the research: a pattern is a square
   lattice on a square or 2:1 sheet
   ([A pattern is a lattice](../todo/13-sandbox-mode-research.md#1-a-pattern-is-a-lattice-and-a-fold-is-a-lattice-line-through-every-layer)),

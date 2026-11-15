@@ -23,6 +23,7 @@
   <body>
     <canvas
       class="scene"
+      tabindex="0"
       role="img"
       aria-label="A sheet of origami paper, which folds into designs or along a printed grid, and turns when dragged"
     ></canvas>
@@ -64,6 +65,11 @@
           <input type="radio" name="pattern" value="oblong-quarter" />
           Oblong ¼
         </label>
+      </div>
+      <div class="sandbox-bar" role="group" aria-label="Folds" hidden>
+        <button type="button" data-undo disabled>Undo</button>
+        <button type="button" data-redo disabled>Redo</button>
+        <button type="button" data-unfold disabled>Unfold</button>
       </div>
       <div class="choices designs" role="radiogroup" aria-label="Design">
         <label>

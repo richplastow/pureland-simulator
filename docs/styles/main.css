@@ -1,9 +1,9 @@
 /*
  * The page follows the operating system's light or dark mode through
- * `color-scheme` and the system colours `Canvas` and `CanvasText`, so it
- * needs no media query. The paper keeps its own colours whatever the colour
- * scheme: its back's is set in src/scene/paper.js, and the colours its
- * front can take in src/scene/paper-colors.js, from which
+ * `color-scheme`, `light-dark()` and the system colours `Canvas` and
+ * `CanvasText`, so it needs no media query. The paper keeps its own colours
+ * whatever the colour scheme: its back's is set in src/scene/paper.js, and
+ * the colours its front can take in src/scene/paper-colors.js, from which
  * src/ui/color-swatches.js also paints the swatches.
  */
 
@@ -18,7 +18,31 @@
   --controls-fade-duration: 0.3s;
   --controls-gap: 0.5rem; /* between neighbouring controls, and swatches */
   --controls-offset: 1.5rem; /* from the viewport's bottom edge */
+  /* a pressed Fold Button's bump, out to its peak and back */
+  --fold-button-bump-duration: 0.2s;
+  /* the pressed pair's stay on screen after the bump, before it fades */
+  --fold-button-bump-hold-duration: 0.2s;
+  --fold-button-bump-scale: 1.4; /* a pressed button's size at the peak */
+  /* a pressed Fold Button's white veil at the bump's peak, 0 to 1 */
+  --fold-button-bump-veil: 0.6;
+  --fold-button-fade-duration: 0.15s; /* the pair's fade in and out */
+  --fold-button-hover-duration: 0.15s; /* a button's change on hover or focus */
+  --fold-button-hover-scale: 1.1; /* a hovered or focused button's size */
+  /* a hovered or focused Fold Button's white veil, 0 to 1 */
+  --fold-button-hover-veil: 0.3;
+  /* a Fold Button's icon, inside its circle */
+  --fold-button-icon-size: 1.5rem;
+  /* a Fold Button's diameter: 32px by default, above WCAG 2.2's 24px
+     minimum, since a fingertip must land on one of two neighbours */
+  --fold-button-size: 2rem;
+  --fold-button-stroke-width: 2; /* the icon's lines, in its 24-unit view box */
   --fold-lines-gap: 0.25rem; /* between the checkbox and its text */
+  /* the page's colour, showing through the transparent canvas: a light grey
+     on the light page, so the Fold Buttons' pure white keeps its circle,
+     and the system's own on the dark page */
+  --page-color: light-dark(#f0f0f0, Canvas);
+  /* draws the canvas's focus ring inside the viewport, which it fills */
+  --scene-focus-ring-inset: 4px;
   --swatch-ring-gap: 2px; /* page colour between a swatch and its ring */
   --swatch-ring-width: 2px; /* the ring round the chosen swatch */
   --swatch-size: 1.5rem; /* 24px by default: WCAG 2.2's minimum target */
@@ -28,7 +52,7 @@
 }
 
 body {
-  background-color: Canvas;
+  background-color: var(--page-color);
   color: CanvasText;
 }
 
@@ -57,6 +81,167 @@ body {
  */
 .scene[data-dragging] {
   cursor: grabbing;
+}
+
+/*
+ * The canvas takes focus from Tab alone, never from a press, which
+ * src/input/drag.js keeps where it was, so the arrow keys can pick lines
+ * in Sandbox Mode. Its ring is the browser's own, drawn inside its edges,
+ * since outside them it would fall off the viewport.
+ */
+.scene:focus-visible {
+  outline: auto;
+  outline-offset: calc(-1 * var(--scene-focus-ring-inset));
+}
+
+/*
+ * The two Fold Buttons over a picked line, made by src/ui/fold-buttons.js,
+ * which inserts them after the canvas, so they paint over it, and writes
+ * `--fold-buttons-x` and `--fold-buttons-y`, the point on screen, in CSS
+ * pixels, that the pair centres on. The pair is kept wholly within the
+ * viewport, so a pick near its edge still leaves both buttons in reach.
+ */
+.fold-buttons {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: var(--controls-gap);
+  translate:
+    clamp(0px, calc(var(--fold-buttons-x, 0px) - 50%), calc(100dvw - 100%))
+    clamp(0px, calc(var(--fold-buttons-y, 0px) - 50%), calc(100dvh - 100%));
+  opacity: 1;
+  transition:
+    opacity var(--fold-button-fade-duration),
+    display var(--fold-button-fade-duration) allow-discrete;
+}
+
+/* The pair fades in from nothing each time it is shown. */
+@starting-style {
+  .fold-buttons {
+    opacity: 0;
+  }
+}
+
+/*
+ * Hidden while no line is picked, by the `hidden` attribute, which the
+ * `display` above would otherwise override, as with `.choices[hidden]`.
+ * The transition holds `display` until the fade out ends, and the pointer
+ * passes through to the canvas as soon as it starts.
+ */
+.fold-buttons[hidden] {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* A pressed button's bump plays out, and the pair holds, before it fades. */
+.fold-buttons[hidden]:has([data-bumped]) {
+  transition-delay: calc(
+    var(--fold-button-bump-duration) + var(--fold-button-bump-hold-duration)
+  );
+}
+
+/*
+ * Each Fold Button is a plain circle in graphic colours, so it reads as a
+ * control laid over the paper. src/ui/fold-buttons.js writes the paper
+ * colour's two shades, `--fold-button-deeper` and `--fold-button-lighter`,
+ * and marks the pair `data-over-white` when the paper under the pick shows
+ * its white side. Over the coloured side, the lighter shade behind black
+ * ink.
+ */
+.fold-buttons button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--fold-button-size);
+  height: var(--fold-button-size);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--fold-button-lighter);
+  color: black;
+  cursor: pointer;
+  transition: scale var(--fold-button-hover-duration);
+}
+
+/* Over the white side, a white behind the deeper shade. */
+.fold-buttons[data-over-white] button {
+  background-color: white;
+  color: var(--fold-button-deeper);
+}
+
+/*
+ * A white veil over the background and under the icon, whose opacity
+ * lightens the button towards white. Lightening by opacity, never by a
+ * transitioned `color-mix()`, keeps Chrome from flickering between the
+ * two colours as it hovers.
+ */
+.fold-buttons button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: white;
+  opacity: 0;
+  transition: opacity var(--fold-button-hover-duration);
+}
+
+/*
+ * A hovered or focused button grows and lightens towards white, which on
+ * the white side, already white, leaves the growth alone to show it.
+ */
+.fold-buttons button:hover,
+.fold-buttons button:focus-visible {
+  scale: var(--fold-button-hover-scale);
+}
+
+.fold-buttons button:hover::before,
+.fold-buttons button:focus-visible::before {
+  opacity: var(--fold-button-hover-veil);
+}
+
+/*
+ * A pressed button, marked by src/ui/fold-buttons.js, bumps: it grows and
+ * lightens further, then returns, from and to the size and colour it has.
+ */
+.fold-buttons button[data-bumped] {
+  animation: fold-button-bump var(--fold-button-bump-duration) ease-out;
+}
+
+.fold-buttons button[data-bumped]::before {
+  animation: fold-button-bump-veil var(--fold-button-bump-duration) ease-out;
+}
+
+@keyframes fold-button-bump {
+  50% {
+    scale: var(--fold-button-bump-scale);
+  }
+}
+
+@keyframes fold-button-bump-veil {
+  50% {
+    opacity: var(--fold-button-bump-veil);
+  }
+}
+
+/* With reduced motion, the buttons lighten but never grow. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --fold-button-bump-scale: 1;
+    --fold-button-hover-scale: 1;
+  }
+}
+
+/* The icon's dash pattern and shape, stroked in the button's ink, over the
+   veil. */
+.fold-buttons svg {
+  position: relative;
+  width: var(--fold-button-icon-size);
+  height: var(--fold-button-icon-size);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--fold-button-stroke-width);
 }
 
 /* Fixed, and later in the document, so it paints over the canvas. */
@@ -109,6 +294,42 @@ body {
  */
 .choices[hidden] {
   display: none;
+}
+
+/*
+ * The sandbox bar, shown in Sandbox Mode alone, after the pattern choices:
+ * Undo, Redo and Unfold, drawn as the choices are. Its `hidden` attribute
+ * needs this rule, as `.choices[hidden]` does.
+ */
+.sandbox-bar {
+  display: flex;
+  gap: var(--controls-gap);
+}
+
+.sandbox-bar[hidden] {
+  display: none;
+}
+
+.sandbox-bar button {
+  padding: var(--choice-padding);
+  border: var(--choice-border-width) solid CanvasText;
+  border-radius: var(--choice-radius);
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--choice-hover-duration);
+}
+
+.sandbox-bar button:hover:enabled {
+  background-color: var(--choice-hover-color);
+}
+
+/* A button at its limit is greyed out in the system's disabled colour. */
+.sandbox-bar button:disabled {
+  border-color: GrayText;
+  color: GrayText;
+  cursor: default;
 }
 
 /*
@@ -178,6 +399,6 @@ body {
 .choices label:has(:checked),
 .paper-colors input:checked {
   box-shadow:
-    0 0 0 var(--swatch-ring-gap) Canvas,
+    0 0 0 var(--swatch-ring-gap) var(--page-color),
     0 0 0 calc(var(--swatch-ring-gap) + var(--swatch-ring-width)) CanvasText;
 }

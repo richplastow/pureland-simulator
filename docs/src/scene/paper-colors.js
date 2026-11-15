@@ -1,7 +1,8 @@
 /**
  * @fileoverview
- * The colours the paper's front can take, and the pure maths of the fade
- * from one to another.
+ * The colours the paper's front can take, their graphic shades for the
+ * controls laid over the paper, and the pure maths of the fade from one
+ * colour to another.
  */
 
 // Each colour's assigned id, which a swatch's `value` and a design's
@@ -17,6 +18,22 @@ export const PAPER_COLORS = Object.freeze({
   blue: 0x3d8fd9, // 6.13:1
   orange: 0xf07d1e, // 7.66:1
   pink: 0xd81b6a, // vibrant magenta pulled towards red, close to rubine, 4.28:1
+});
+
+// Each colour's two graphic shades, at full saturation, for the Fold Buttons
+// and the lit line, which read as controls laid over the photorealistic
+// paper: `lighter`, a button's background on the coloured side, behind a
+// pure black icon; and `deeper`, a button's icon and the lit line on the
+// white side, on a pure white background. As hex numbers, in sRGB, keyed
+// and ordered as `PAPER_COLORS`, each pair clearing WCAG's non-text
+// contrast of 3:1, given as black on `lighter`, then `deeper` on white.
+// Open to retuning by eye against the rendered paper.
+export const PAPER_COLOR_SHADES = Object.freeze({
+  red: Object.freeze({ deeper: 0xff0d00, lighter: 0xff7870 }), // 8.17, 3.96
+  green: Object.freeze({ deeper: 0x009c12, lighter: 0x70ff81 }), // 16.31, 3.64
+  blue: Object.freeze({ deeper: 0x0086ff, lighter: 0x70bbff }), // 10.24, 3.59
+  orange: Object.freeze({ deeper: 0xdb6300, lighter: 0xffb170 }), // 11.77, 3.62
+  pink: Object.freeze({ deeper: 0xf30066, lighter: 0xff70ac }), // 8.17, 4.20
 });
 
 // The front's fade from one colour to another, as long as the fold lines'
