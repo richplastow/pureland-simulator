@@ -71,6 +71,12 @@ type: research
   has two, a mountain and a valley.
 - A click on a Fold Button folds the design's own angle for that fold:
   flat, or 90° for the dart's wings.
+- A mouse drag from a lit fold line works as the Sandbox's does
+  ([Plan 19, Decision 1](./19-fold-angle.md#decisions)): the paper
+  folds live, its angle following the pointer's distance from the
+  line, and returning to the line cancels. But it is only a preview:
+  any other release settles at the design's own angle, so Gameplay
+  Mode never judges an angle, and one gesture works in both modes.
 - A Fold Button normally sits over the centre point of its fold line, with
   three exceptions:
   1. **Overlap.** Two Fold Buttons would overlap, which the paper dart may
@@ -143,13 +149,20 @@ type: research
 
 - The game might be more challenging if the lines were printed as plain
   straight lines, with no mountain or valley marking. Each fold line
-  would then carry two Fold Buttons side by side, one for a mountain fold
-  and one for a valley fold, and the player would choose the direction
-  as well as the order.
+  would then carry a pair of Fold Buttons, one for a mountain fold and
+  one for a valley fold, straddling the line as the Sandbox's pairs do,
+  and the player would choose the direction as well as the order.
 - Basic Sandbox Mode already prints its patterns as plain lines and asks
   for a direction at every fold
   ([Picking a line](./13-sandbox-mode-research.md#3-picking-a-line-with-the-pointer)),
   so Gameplay Mode could reuse both.
+- **Ruled: in, but later, and line by line.** Gameplay Mode first ships
+  with marked lines and one Fold Button per fold, so the order is the
+  whole puzzle. Plain lines arrive in a later plan, and a design may
+  then print some of its lines plain and keep the rest marked, to make
+  it more difficult and interesting. Whether a line is plain is
+  therefore design data, per fold, not a mode-wide switch: a plain
+  line carries a pair of Fold Buttons, a marked one a single button.
 
 ### Designs in scope
 
@@ -157,6 +170,11 @@ type: research
   Gameplay Mode is unlikely ever to use them. The five designs the page
   offers, the pencil, Mount Fuji, the yacht, the paper dart and the
   heart, are in scope.
+- More playable designs are expected to be picked for Gameplay Mode at
+  some future point, so these five are a starting set, not a final
+  one. The pencil and Mount Fuji, whose dead ends arrive only with the
+  last fold ([The traps](#the-traps-design-by-design)), play poorly as
+  mazes.
 
 ## Working assumptions
 
@@ -269,8 +287,11 @@ What the table says:
   layers, and end with the flaps stacked as a mirror image. The printed
   rule rules those out on its own (the half fold first is a trap, since
   the corner fold then creases the other layer, where that crease is
-  printed for the other corner's fold). Whether such a dart should count
-  as finished is [open](#open-questions).
+  printed for the other corner's fold). A mirror-stacked dart is not
+  finished: the goal is the design's own stacking, so the goal test
+  compares layers as well as places, the same notion of one state that
+  the live graph uses, and if the printed rule were ever loosened such
+  a dart would be a dead end.
 
 ### The traps, design by design
 
@@ -438,7 +459,9 @@ part names its options and a recommendation, for discussion.
   with its place and layer) is in the live graph, or the state is doomed.
   So doomed subtrees are never enumerated, which the direction choice
   would otherwise make impossible.
-- **Dead end** = not the goal, and no available fold that is not blocked.
+- **Dead end** = not the goal, and no available fold that is not
+  blocked; or a state just reached by folding a plain line the wrong
+  way, which is not in the live graph, a lookup the judge already makes.
   **Trap** = an edge from a live state to a state not in the live graph.
 - Node ids are assigned by the builder, and edges and blocked edges name
   nodes by id, never by content, as
@@ -540,8 +563,17 @@ part names its options and a recommendation, for discussion.
   move off each other's lines. A Node check over the live graph reports
   any state where two anchors fall within a named distance, or one lies
   on another's line, so a new design cannot add an overlap unnoticed.
-  With a direction choice, the two buttons of a fold sit either side of
-  the anchor along the line, in screen space, a button's width apart.
+  With a direction choice, the two buttons of a fold centre on the
+  anchor and straddle the line, each on the side it stands for, as the
+  Sandbox arranges them
+  ([Plan 18, Decision 15](./18-fast-fold.md#decisions)): stacked,
+  mountain above, on a line within 45° of horizontal on screen, and
+  side by side, valley left, on a steeper one. A one-way fold's single
+  button centres on its line
+  ([Decision 18](./18-fast-fold.md#decisions)), and with a mouse both
+  sides of the line can stand in for it, as each side stands in for
+  its own button of a pair
+  ([Decision 17](./18-fast-fold.md#decisions)).
 - **Alternative to anchors: the Sandbox's pointer picking**, which needs
   no anchors and no placement exceptions, but shows no button on a line
   until the pointer finds it, where the brief gives every fold line a
@@ -570,28 +602,38 @@ part names its options and a recommendation, for discussion.
 ```
 
 - **Dead ends** cost a life and block the edge the player came in by.
+  Every dead end is reported the same way, with no Fold Button left, a
+  life lost and a short message, even the pencil's and Mount Fuji's,
+  which arrive only with the last fold: the game says nothing of where
+  the wrong turn was, or which faces lie out of place.
   Blocking then propagates: a state whose every available edge is
   blocked is itself a dead end, so its incoming edge is blocked too, for
   no further life. Blocking never cuts the goal off, since a live state
   always keeps a live edge and no live edge is ever blocked.
-- **Direction mistakes** need their own feedback, since a dead end never
-  reveals them before the last fold. Options: report at once (a buzz, a
-  life, the fold undone or left for the player to undo), or report at
-  the end, highlighting the folds that went the wrong way. The first
-  keeps the order puzzle a maze and the direction puzzle a quick check;
-  it is [open](#open-questions).
-- **Hints**: from a live state, pulse a Fold Button whose edge is in
-  the live graph; from a doomed state, pulse Undo, perhaps saying how
-  many folds back the wrong turn was. Five slots, earned per design
-  finished or per run of correct folds: [open](#open-questions).
-- **Points** are best awarded at the goal, from folds pressed against
-  the minimum and lives kept, rather than per fold: a score that rises
-  on every correct press would reveal correctness and spoil the maze.
-  [Open](#open-questions).
-- A session is per design: entering Gameplay Mode or choosing another design
-  starts a new one, which clears the path, the undo history and the
-  blocked edges; whether lives, points and hints carry across designs is
-  [open](#open-questions).
+- **Direction mistakes are dead ends at once.** A wrong direction
+  makes the same creases as the right one, so no later fold would
+  reveal it before the last. Instead, folding a plain line the wrong
+  way is a dead end the moment it is made: no Fold Button left, a life
+  lost, the same short message as any dead end, and the edge blocked,
+  so the player presses Undo. Each plain line is thus one quick choice,
+  while order mistakes stay hidden and the maze stays about order.
+- **Everything is per design.** A session is one design: entering
+  Gameplay Mode or choosing another design starts a new one, which
+  clears the path, the undo history, the blocked edges, the lives, the
+  points and the hints. Nothing carries across designs or survives a
+  reload, so no balancing across designs is needed while the set of
+  designs is still expected to change.
+- **Lives**: each design starts with 3, a named constant to tune.
+  Running out ends the attempt: a message, then the paper unfolds and
+  the design starts afresh.
+- **Hints**: each design starts with 1, a named constant to tune, and
+  earns no more, since a hint earned per run of correct folds would
+  reveal that the run was correct. From a live state, a hint pulses a
+  Fold Button whose edge is in the live graph; from a doomed state, it
+  pulses Undo, perhaps saying how many folds back the wrong turn was.
+- **Points** are awarded at the goal, from folds pressed against the
+  minimum and lives kept, rather than per fold: a score that rises on
+  every correct press would reveal correctness and spoil the maze.
 
 ### 7. The toolbar
 
@@ -607,10 +649,15 @@ part names its options and a recommendation, for discussion.
   finished model: the paper unfolds along the gameplay sheet, swaps to the
   design's sheet flat, and folds up, all with the stepper as it is.
 - The colour swatches work as before in every mode.
-- Fold Button labels must not give the order away: "Fold 3" would, since
-  fold indices follow the design's steps. A label by direction and
-  position ("valley fold, upright line, left") or a per-design shuffle of
-  the visible numbers: [open](#open-questions).
+- **Each fold is named in the design data**, so a screen reader can
+  name it without giving the order away, as "Fold 3" would, since fold
+  indices follow the design's steps. A short name per fold ("tip",
+  "right corner"), about 35 across the five designs, stays the same
+  however the paper is turned. Fold Buttons show icons only and sit
+  outside the Tab order, so the name is spoken by one `aria-live`
+  region, which announces the direction and the name ("Valley fold:
+  right corner") whenever a line is picked. Today the page has no live
+  region, and the designs name their folds only in code comments.
 
 ### 8. Likely plans
 
@@ -626,51 +673,23 @@ each pair is where one could be accepted and the next rejected.
    proof: Presentation Mode and Sandbox Mode are unchanged, checksums
    and all.
 2. **Gameplay Mode folds**: Gameplay Mode in the mode radios, the
-   gameplay sheet, Fold Buttons projected over the canvas, pressing one
-   folds, and Undo, Redo, Unfold and the shortcuts as in the Sandbox. No
+   gameplay sheet, Fold Buttons projected over the canvas, each fold's
+   name announced when its line is picked, pressing one folds, and Undo, Redo, Unfold and the shortcuts as in the Sandbox. No
    lives, points or hints yet. Visible proof: fold the yacht and the dart
    by hand, undo and redo them.
 3. **The game**: dead ends, lives, blocking, hints, points, the gameplay bar
    and its messages. Visible proof: walk into a dart trap, lose a life,
    find the way out with a hint.
-4. **Plain lines and a direction choice**, if ruled in: the plain
-   printing and the Fold Button pair come from the Sandbox, so this adds
-   the button pairs at each anchor and the direction feedback. It could
-   land before 3 if the direction choice is settled first.
+4. **Plain lines and a direction choice**: a per-fold flag in the
+   design data prints some of a design's lines plain. The plain
+   printing and the Fold Button pair come from the Sandbox, so this
+   adds the pairs at those lines' anchors and the direction feedback.
+   It could land before 3 if the direction feedback is settled first.
 
 ## Open questions
 
-For the Lead Developer, each to be settled before the plan that needs it
-is drafted:
-
-1. **Plain lines and a direction choice: in or out?** It is the only way
-   the yacht and the heart become puzzles. The Sandbox already builds
-   the plain printing and the Fold Button pair, so the cost here is
-   doubled Fold Buttons and direction feedback of its own. Presentation
-   Mode keeps its dashes whatever this rules: a line shows its direction
-   only where the direction is fixed
-   ([Basic Sandbox Mode research](./13-sandbox-mode-research.md#4-the-sandbox-sheet-undo-redo-and-unfold)).
-   Needed before Plan 2 above, since it sets how many buttons a fold has.
-2. **How is a direction mistake reported?** At once, or at the end: see
-   [The game layer](#6-the-game-layer). Needed before Plan 3.
-3. **Is a mirror-stacked dart finished?** The goal today matches layers
-   as well as places; the loose exploration shows 13 extra orderings that
-   reach the dart's shape with its flaps stacked the other way. The
-   printed rule keeps them out, so the answer only matters if the rule
-   is ever loosened. Needed before Plan 1 settles the goal test.
-4. **Lives, points and hints**: how many lives, whether they and the
-   points carry across designs, what earns a hint, and whether running
-   out of lives ends the session. Needed before Plan 3.
-5. **Fold Button labels** that do not reveal the order. Needed before
-   Plan 2.
-6. **The pencil's and Mount Fuji's dead ends arrive with the last fold**,
-   when the model is nearly right. Is "no Fold Button left" enough of a
-   signal there, or should the goal test's verdict ("not quite: a corner
-   is under the wrong flap") be shown? Needed before Plan 3.
-7. **Dragging a Fold Button in Gameplay Mode?** In the Sandbox, a drag
-   chooses the fold's angle. Here each fold has its design's angle, and
-   any other leaves the goal: the drag could be off, or allowed and
-   judged. Needed before Plan 2.
+None. Each question raised here has been ruled, and the rulings are
+folded into the sections above and logged in the [Audit](#audit).
 
 ## Sources
 
@@ -692,8 +711,10 @@ is drafted:
 
 ## Decision record
 
-No question of this file's own has been put to the Lead Developer yet.
-Four rulings on the
+This file's own rulings are folded into the sections above and logged
+in its [Audit](#audit); the briefs behind those of 16 and 17 November
+2026, with their options, are kept in
+[Gameplay Mode and Fast Fold briefs](./14-gameplay-mode-briefs.md). Four rulings on the
 [Basic Sandbox Mode research](./13-sandbox-mode-research.md#decision-record),
 from 2026-11-12 to 2026-11-14, bear on Gameplay Mode; their background,
 options and answers are recorded there in full.
@@ -701,9 +722,9 @@ options and answers are recorded there in full.
 | Ruling | Date | What it means for Gameplay Mode |
 | --- | --- | --- |
 | [Q2. The direction buttons](./13-sandbox-mode-research.md#q2-the-direction-buttons) | 2026-11-12 | Fold Buttons take the Sandbox's design: circles with icons, mountain and valley as seen, graphic colours; one per one-way fold, two with a direction choice; a click folds the design's angle |
-| [Q7. Dragging to an angle](./13-sandbox-mode-research.md#q7-dragging-to-an-angle) | 2026-11-14 | A drag on a Fold Button chooses an angle in the Sandbox; whether it may here is this file's open question 7 |
+| [Q7. Dragging to an angle](./13-sandbox-mode-research.md#q7-dragging-to-an-angle) | 2026-11-14 | A drag chooses an angle in the Sandbox, now from a lit line with a mouse; here a mouse drag from a line is a live preview that always settles at the design's angle |
 | [Q8. How far standing folds go](./13-sandbox-mode-research.md#q8-how-far-standing-folds-go) | 2026-11-14 | The Sandbox engine gains several standing folds, a stepping stone to the fold tree, which Gameplay Mode's engine shares |
-| [Q10. Lines in Presentation Mode](./13-sandbox-mode-research.md#q10-lines-in-presentation-mode) | 2026-11-14 | A line shows its direction only where the direction is fixed: Presentation Mode keeps its dashes whatever open question 1 rules |
+| [Q10. Lines in Presentation Mode](./13-sandbox-mode-research.md#q10-lines-in-presentation-mode) | 2026-11-14 | A line shows its direction only where the direction is fixed: Presentation Mode keeps its dashes, whichever lines a design prints plain in Gameplay Mode |
 
 ## Audit
 
@@ -719,3 +740,49 @@ options and answers are recorded there in full.
   Presentation Mode keeps its dashes, as the Sandbox research rules.
 - **2026-11-14T13:37:05Z** — **recorded**: the decision record added,
   linking the four Sandbox rulings that bear on Gameplay Mode.
+- **2026-11-16T19:10:03Z** — **revised**: a plain line’s pair of Fold
+  Buttons now straddles its line as Plan 18 arranges the Sandbox’s
+  pairs, in the brief and in §5, which also records the single button
+  centred on a one-way line and the mouse proxy; ruled by the Lead
+  Developer via /feed-me.
+- **2026-11-17T09:10:48Z** — **ruled**: a mirror-stacked dart is not
+  finished; the goal test compares layers as well as places (Results).
+  Open question 3 removed and the rest renumbered, so dragging is now
+  open question 6; ruled by the Lead Developer via /feed-me.
+- **2026-11-17T18:29:59Z** — **ruled**: a mouse drag from a fold line is
+  a live preview, as in the Sandbox, that always settles at the
+  design’s own angle ([Fold Buttons](#fold-buttons)); open question 6
+  removed; ruled by the Lead Developer via /feed-me.
+- **2026-11-17T21:07:03Z** — **ruled**: each fold is named in the design
+  data, and one live region announces the direction and the name when
+  a line is picked ([The toolbar](#7-the-toolbar), Plan 2 of
+  [Likely plans](#8-likely-plans)); open question 4, Fold Button
+  labels, removed and 5 renumbered as 4; ruled by the Lead Developer
+  via /feed-me.
+- **2026-11-17T21:12:54Z** — **ruled**: every dead end is reported the
+  same way, the pencil’s and Mount Fuji’s last-fold dead ends included
+  ([The game layer](#6-the-game-layer)); more playable designs are
+  expected later ([Designs in scope](#designs-in-scope)); open question
+  4 removed; ruled by the Lead Developer via /feed-me.
+- **2026-11-17T21:18:20Z** — **ruled**: plain lines are in, but later:
+  Gameplay Mode first ships with marked lines and one Fold Button per
+  fold, and a later plan lets a design print some of its lines plain
+  ([Plain lines](#plain-lines-and-a-choice-of-direction), Plan 4 of
+  [Likely plans](#8-likely-plans)); open question 1 removed, the rest
+  renumbered, and the direction mistake now gates Plan 4; ruled by the
+  Lead Developer via /feed-me.
+- **2026-11-17T21:23:47Z** — **ruled**: folding a plain line the wrong
+  way is a dead end at once, reported as any other
+  ([The game layer](#6-the-game-layer), and the dead end’s definition
+  in [the live graph](#2-the-live-graph-and-availability-on-the-fly));
+  open question 1 removed and 2 renumbered as 1; ruled by the Lead
+  Developer via /feed-me.
+- **2026-11-17T21:25:52Z** — **ruled**: lives, points and hints are all
+  per design, 3 lives and 1 hint to start, and running out of lives
+  starts the design afresh ([The game layer](#6-the-game-layer));
+  open question 1 removed, leaving none; ruled by the Lead Developer
+  via /feed-me.
+- **2026-11-17T21:30:41Z** — **recorded**: the /feed-me briefs of
+  2026-11-16 and 2026-11-17 kept in
+  [14-gameplay-mode-briefs.md](./14-gameplay-mode-briefs.md), linked
+  from the decision record.

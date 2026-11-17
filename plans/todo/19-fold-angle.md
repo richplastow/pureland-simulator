@@ -1,6 +1,6 @@
 ---
-title: Dragging a Fold Button to an angle
-description: Lets a drag on a Fold Button choose the fold's angle in 15° steps, shown by a ring round the button, so a last fold can stand up short of flat, with a keyboard and a single-tap way to the same angles.
+title: Dragging a Fold Line to an angle
+description: Lets a mouse drag from a lit Fold Line fold the paper live, its direction set by the side of the line and its angle by the pointer's distance from it, so a last fold can stand up short of flat. The rest of the plan predates this and is reworked at review.
 type: plan
 ---
 
@@ -8,7 +8,7 @@ type: plan
 
 - The fourth of the five Basic Sandbox Mode plans, on
   [Plan 17](../done/17-sandbox-folds.md)'s Fold Buttons, and before
-  [Plan 19](./19-export-design.md), which writes the angle into the
+  [Plan 20](./20-export-design.md), which writes the angle into the
   export. It delivers the drag the research's ruling put in the first
   folding plan: a click folds flat, a drag chooses an angle, a ring
   round the button follows the drag, snapping to 15°, and on release
@@ -20,8 +20,17 @@ type: plan
   [Angles](./13-sandbox-mode-research.md#7-angles-several-standing-folds-a-stepping-stone-to-the-fold-tree)).
   Plan 17 already shows no buttons where no line is foldable, so after
   a standing fold nothing lights and nothing is offered, which is the
-  grey-out the research asks for. [Plan 20](./20-standing-folds.md)
+  grey-out the research asks for. [Plan 21](./21-standing-folds.md)
   lifts the limit to several standing folds.
+- **Decision 1 now drags from the line, not a Fold Button**, and the
+  paper itself folds live as the pointer moves. The rest of this plan
+  still describes the drag on a button: the snapping (Decision 2), the
+  ring and its label (Decision 3), the keyboard and the tap on the ring
+  (Decision 6), the Steps and the Manual QA are reworked at this
+  plan's review, which also weighs whether a ring is still needed when
+  the paper shows the angle, and how
+  [Plan 18](./18-fast-fold.md#decisions)'s Up and Down on the canvas
+  reach an angle.
 - The ghost, a translucent preview of the fold during the drag, is
   left out as the ruling says, and may follow once this plan's Manual
   QA says whether the ring alone is enough to judge an angle by.
@@ -36,20 +45,42 @@ type: plan
 
 ## Decisions
 
-1. **A drag on a Fold Button chooses the angle by its distance.** A
-   press on a button captures the pointer; the pointer's distance from
-   the press point, in any direction, sets the angle at
-   `DRAG_DEGREES_PER_PIXEL = 1.5`, so a half turn is 120 px, snapped
-   down to the nearest 15°; a press that moves less than the drag
-   threshold, `DRAG_THRESHOLD_PX = 4`, is a click and folds flat. On
-   release at 15° or more the fold is made at that angle; below 15°
-   the drag cancels and nothing folds. Both constants are open to
-   retuning by eye.
-2. **Snapping keeps angles exact.** snapAngleRadians(radians) in
-   `docs/src/sandbox/angle.js` rounds down to a multiple of
-   `SNAP_RADIANS = π / 12` and clamps to 0 to π, so every angle is a
-   whole number of twelfths of a half turn, which Plan 19 writes as a
-   fraction.
+1. **A mouse drag from a lit Fold Line folds it live, its angle the
+   pointer's distance from the line.** Mouse only: a touch drag
+   always orbits ([Plan 18](./18-fast-fold.md#decisions),
+   Decision 1), and the drag relies on the mouse's precision and
+   hover. The press is the one Plan 18 claims for the line, and the
+   paper follows the pointer as it moves, easing quickly to each new
+   angle:
+   - **Direction by side.** Each line has a Mountain side and a
+     Valley side on screen, the sides its pair's buttons sit on
+     (Plan 18, Decision 15). The pointer on the Mountain side folds
+     mountain, on the Valley side valley; crossing the line bends the
+     fold back through flat to the other direction.
+   - **Angle by distance.** The angle is the pointer's distance from
+     the line, measured square to it, as a share of the distance from
+     the line to `EDGE_MARGIN_PX = 40` inside the viewport's edge
+     along that same square line through the pointer: 0° on the line,
+     180° at that margin or beyond (inferred: the square line through
+     the pointer is what picks the "nearest edge"). Dragging back to
+     the line brings the angle back to 0°.
+   - **Release.** Below `CANCEL_DEGREES = 4` the fold is cancelled
+     and the paper eases back to flat; at any other angle, wherever
+     the pointer is released, over the toolbar included, the fold is
+     made at that angle. Pointer capture keeps the drag's events
+     coming to the canvas wherever the pointer goes.
+   - A press that moves less than the drag threshold,
+     `DRAG_THRESHOLD_PX = 4`, is a click, as Plan 18 sets out. Both new
+     constants are first guesses, open to retuning by eye.
+2. **Snapping keeps angles exact, on release only.** While the drag
+   lasts the paper follows the pointer's exact angle; on release,
+   snapAngleRadians(radians) in `docs/src/sandbox/angle.js` rounds it
+   to the nearest multiple of `SNAP_RADIANS = π / 12` (15°), clamped
+   to 0 to π, and the paper eases there, so every fold made is a whole
+   number of steps, which Plan 20 writes as a fraction of a half turn.
+   15° is today's step; it may later shrink to 10° or 5°, so nothing
+   outside `SNAP_RADIANS` assumes twelfths, and every angle stays a
+   whole number of 36ths of a half turn.
 3. **The ring is an SVG circle** round the button being dragged, of
    `RING_RADIUS_PX = 22` with a stroke of `RING_WIDTH_PX = 4`, whose
    `stroke-dasharray` shows the angle as an arc from the top, clockwise:
@@ -69,7 +100,7 @@ type: plan
    trying each line, catching the refusal, and keeps only the lines
    that cut; after a standing fold that is none. The pointer lights
    nothing, a click picks nothing, and the sandbox bar's Undo is the
-   way back. Plan 20 replaces this trial with its own rules.
+   way back. Plan 21 replaces this trial with its own rules.
 6. **Two ways to an angle without dragging.** With a Fold Button
    focused, Up and Down step the angle by 15° between 15° and 180°,
    showing the ring, and Enter or Space folds at the shown angle; and,
@@ -189,3 +220,17 @@ blue square with its eight lines.
 - **2026-11-14T14:05:33Z** — **drafted**: the drag to a snapped angle with a
   ring and a degree label, the standing fold left standing with nothing
   foldable after it, and the keyboard and tap alternatives to the drag.
+- **2026-11-17T17:49:15Z** — **ruled**: the angle drag starts from a lit Fold Line,
+  mouse only, and folds the paper live: the side of the line sets the
+  direction, crossing it bends the fold back, the distance from the
+  line sets the angle, 180° at 40 px inside the viewport edge, and a
+  release below 4° cancels (Decision 1); ruled by the Lead Developer
+  via /feed-me. The agent added, as inferred: the distance to the edge
+  is measured along the square line through the pointer. Decisions 2,
+  3 and 6, the Steps and the Manual QA left for this plan’s review.
+- **2026-11-17T18:11:45Z** — **ruled**: the drag is continuous and the release snaps to
+  the nearest 15°, easing there; the step may later shrink to 10° or 5°
+  (Decision 2); ruled by the Lead Developer via /feed-me.
+- **2026-11-17T21:30:41Z** — **recorded**: the /feed-me briefs behind
+  Decisions 1 and 2 kept in
+  [14-gameplay-mode-briefs.md](./14-gameplay-mode-briefs.md).

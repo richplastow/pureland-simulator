@@ -7,8 +7,8 @@ type: plan
 ## Context
 
 - The last of the five Basic Sandbox Mode plans, on
-  [Plan 18](./18-fold-angle.md)'s standing folds and
-  [Plan 19](./19-export-design.md)'s export, which records every angle
+  [Plan 19](./19-fold-angle.md)'s standing folds and
+  [Plan 20](./20-export-design.md)'s export, which records every angle
   already. It delivers the research's ruling in
   [Angles](./13-sandbox-mode-research.md#7-angles-several-standing-folds-a-stepping-stone-to-the-fold-tree):
   several standing folds, each left standing by every later fold, with
@@ -81,7 +81,7 @@ type: plan
    otherwise to the limit; a drag's ring will not pass the limit, and
    a drag to it folds as far as the paper goes, as a real fold stops
    against a wall. The limits are computed once per rest state with the
-   foldable lines, replacing Plan 18's trial of the engine.
+   foldable lines, replacing Plan 19's trial of the engine.
 6. **The pose and the centres are as they are.** stageCentres() keeps
    reading every face's placement: a standing flap's reflected
    placement lies over the flat paper beside its hinge, which every
@@ -209,7 +209,7 @@ Wait for the pink oblong with its ten lines.
 8. **Do:** click "Unfold", then on the square pattern stand a corner
    at 90° and drag the paper to look at it; then click "Presentation"
    and "Paper Dart".
-   - **Expect:** the square's corner stands as in Plan 18; the dart
+   - **Expect:** the square's corner stands as in Plan 19; the dart
      folds with its wings standing at the end, exactly as before.
 9. **Do:** click "Sandbox", stand a wall, and record the Performance
    panel while clicking a line.

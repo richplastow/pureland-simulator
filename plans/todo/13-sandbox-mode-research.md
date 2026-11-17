@@ -809,23 +809,28 @@ both the folding and the drag to an angle.
    line by click or tap, the icon Fold Buttons coloured by the facing
    side, a click folding flat with an invisible sheet swap, Undo, Redo,
    Unfold and the shortcuts. Visible proof: the blintz by hand.
-4. [Plan 18, Dragging a Fold Button to an angle](./18-fold-angle.md):
+4. [Plan 18, Fast Fold, and sharper pointer and keyboard folding](./18-fast-fold.md),
+   added on 2026-11-16 after Plan 17's manual QA: lines that take the
+   pointer, hovering other lines while a pick stands, Up and Down to
+   fold, and a Fast Fold mode that shows Fold Buttons without a pick.
+   Visible proof: a fold in one touch.
+5. [Plan 19, Dragging a Fold Button to an angle](./19-fold-angle.md):
    the drag, its ring snapping to 15°, a finishing fold left standing,
    and the keyboard and tap alternatives. Visible proof: a corner stood
    at 90°.
-5. [Plan 19, Export a Sandbox session as a JSON design](./19-export-design.md):
+6. [Plan 20, Export a Sandbox session as a JSON design](./20-export-design.md):
    the JSON design format, its reader and writer, the Export dialog,
    and the blintz round-tripped into a radio. Visible proof: a design
    folded in the Sandbox plays in Presentation Mode.
-6. [Plan 20, Several standing folds](./20-standing-folds.md): standing
+7. [Plan 21, Several standing folds](./21-standing-folds.md): standing
    faces left out of "all layers", the hinge rule, the side rule once a
    flap stands, the 3D sweep test, and the limits shown by the Fold
    Buttons and the ring. Visible proof: two walls, and a fold that
    stops against one.
-7. Then Gameplay Mode, as the
+8. Then Gameplay Mode, as the
    [Gameplay Mode research](./14-gameplay-mode-research.md) outlines, on
-   top of 15 to 17; and the fold tree, after its own research, building
-   on 20.
+   top of 15 to 18; and the fold tree, after its own research, building
+   on 21.
 
 ## Open questions
 

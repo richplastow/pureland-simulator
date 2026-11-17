@@ -7,8 +7,8 @@ type: plan
 ## Context
 
 - The last of the five Basic Sandbox Mode plans but one, on
-  [Plan 18](./18-fold-angle.md), whose angles it writes out, and before
-  [Plan 20](./20-standing-folds.md). It delivers the research's
+  [Plan 19](./19-fold-angle.md), whose angles it writes out, and before
+  [Plan 21](./21-standing-folds.md). It delivers the research's
   [export as a design](./13-sandbox-mode-research.md#6-export-as-a-design)
   under its ruling: a JSON design file, carrying named fractions and
   notes, loaded back by a JSON module import and a small converter.
@@ -34,8 +34,10 @@ type: plan
    never derived from the content; `aspect` and `colorId` from the
    pattern; an optional `note`; and `steps`, one per fold, each with
    `from` and `to` as fraction strings, `type`, `halfTurns`, the
-   finished angle as a fraction of a half turn, `"1"` for flat, and an
-   optional `note`. Keys are written A-Z, as the repo orders
+   finished angle as a fraction of a half turn, `"1"` for flat, in
+   lowest terms with a denominator of at most 36, so a snap step of
+   15°, 10° or 5° ([Plan 19](./19-fold-angle.md#decisions),
+   Decision 2) all write exactly, and an optional `note`. Keys are written A-Z, as the repo orders
    properties. A coordinate is a fraction of the sheet's width for x
    and height for y, in lowest terms, such as `"0"`, `"1/2"` or
    `"-3/8"`: lattice points are exact fractions with a denominator of
@@ -208,3 +210,6 @@ fold at 90° by a drag.
 - **2026-11-14T14:05:33Z** — **drafted**: the JSON design format with
   fraction coordinates, half-turn angles and notes, its reader and writer,
   the blintz round-tripped into a radio, and the Export dialog with Copy.
+- **2026-11-17T18:11:45Z** — **revised**: an angle’s fraction may have a denominator of
+  up to 36, since Plan 19’s snap step may shrink from 15° to 10° or 5°;
+  ruled by the Lead Developer via /feed-me.

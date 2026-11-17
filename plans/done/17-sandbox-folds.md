@@ -8,7 +8,7 @@ type: plan
 
 - The third of the five Basic Sandbox Mode plans, on
   [Plan 16](./16-sandbox-mode.md)'s printed lattice, and before
-  [Plan 18](../todo/18-fold-angle.md), which adds the drag to an angle. It
+  [Plan 19](../todo/19-fold-angle.md), which adds the drag to an angle. It
   delivers the toy: pick a line, press a Fold Button, and the paper
   folds flat along it; Undo, Redo and Unfold walk back and forth.
 - It implements the research's
@@ -117,7 +117,7 @@ type: plan
    which gives a point of the folded plane that Plan 15's lines are in.
    Scale, start pose, lean and spin all fall out of the world matrix.
    No raycast against the mesh is needed, since at rest every flat
-   fold lies in that plane; Plan 18's standing folds come after the
+   fold lies in that plane; Plan 19's standing folds come after the
    pick is cleared.
 3. **The foldable lines are found once per rest state**, not per
    move: when the stepper comes to rest in Sandbox Mode, main.js
@@ -333,7 +333,7 @@ type: plan
     Left and Right arrow keys cycle the foldable lines in Plan 15's
     order, lighting each and showing its buttons over the line's
     midpoint; Tab then reaches the Valley and Mountain buttons, where
-    Enter or Space folds. Up and Down are left for Plan 18's ring.
+    Enter or Space folds. Up and Down are left for Plan 19's ring.
 13. **A switch of pattern or mode discards the session** without a
     warning, as the open question below leaves it.
 
@@ -468,7 +468,7 @@ type: plan
    turning the paper imperceptibly instead of picking. `drag.js` now
    treats a press as a drag only once the pointer strays more than
    `DRAG_THRESHOLD_PX = 4` from where it went down (Decision 1), the
-   value Plan 18 proposes for a press on a Fold Button, which can
+   value Plan 19 proposes for a press on a Fold Button, which can
    import it. Whether 4 px is enough for a fingertip is still Manual
    QA 12's to judge on a real touch screen.
 
