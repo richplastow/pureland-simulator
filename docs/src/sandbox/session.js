@@ -4,7 +4,7 @@
  */
 
 import { createFold } from "../designs/steps.js";
-import { cutSheet } from "../fold/engine.js";
+import { cutSheet, stopsShort } from "../fold/engine.js";
 import { printedLines } from "./lattice.js";
 
 /** #### Creates the empty session, before any fold
@@ -81,4 +81,25 @@ export const foldAt = (session, position, fold) => {
   return Object.freeze({
     folds: Object.freeze([...folds.slice(0, position), made]),
   });
+};
+
+/** #### Returns true if any of a session's first folds stops short of flat
+ * - A fold that stops short leaves a flap standing, and nothing yet checks
+ *   whether a later fold would swing paper through it, so while one stands
+ *   nothing more is foldable.
+ * - Its arguments run in foldAt()'s order, rather than A-Z.
+ * - Allocates nothing.
+ * - Pure maths, with no DOM or GPU access.
+ * @param session The session.
+ * @param position The number of the session's folds to look at, the first
+ *   ones, from 0 to its fold count.
+ * @returns True if one of them stops short.
+ */
+export const hasStandingFold = (session, position) => {
+  const { folds } = session;
+  for (let i = 0; i < position; i++) {
+    if (stopsShort(folds[i])) return true;
+  }
+
+  return false;
 };

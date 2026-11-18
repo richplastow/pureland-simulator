@@ -7,7 +7,7 @@ type: plan
 ## Context
 
 - The last of the five Basic Sandbox Mode plans, on
-  [Plan 19](./19-fold-angle.md)'s standing folds and
+  [Plan 19](../done/19-fold-angle.md)'s standing folds and
   [Plan 20](./20-export-design.md)'s export, which records every angle
   already. It delivers the research's ruling in
   [Angles](./13-sandbox-mode-research.md#7-angles-several-standing-folds-a-stepping-stone-to-the-fold-tree):
@@ -21,7 +21,14 @@ type: plan
   with flat folds before and between them; a third almost never fits,
   and a box never does. The fold tree, after its own research, lifts
   the rule that a standing flap's hinge must stay on the held side.
-- The ghost preview is not part of this plan.
+- [Plan 19](../done/19-fold-angle.md#decisions) changes the pose of a fold
+  that stops short: its pivot now counts held faces at the hinge (its
+  Decision 4), which Decision 6 here relies on.
+- [Plan 19](../done/19-fold-angle.md#decisions) has no ring: the paper alone
+  shows a drag's angle (its Decision 3). Wherever this plan has the
+  ring show or stop at a sweep limit (Decision 5, Step 2, Manual QA),
+  the paper is what stops, and those lines are reworked at this plan's
+  review.
 - Figures marked "measured" were run on 2026-11-14 with the research's
   prototype of these rules over a patched copy of the engine, kept at
   the repo root as `tmp-sandbox-mode-standing.mjs`, which git ignores.
@@ -81,19 +88,31 @@ type: plan
    otherwise to the limit; a drag's ring will not pass the limit, and
    a drag to it folds as far as the paper goes, as a real fold stops
    against a wall. The limits are computed once per rest state with the
-   foldable lines, replacing Plan 19's trial of the engine.
+   foldable lines, replacing Plan 19's rule that nothing is foldable
+   after a standing fold.
 6. **The pose and the centres are as they are.** stageCentres() keeps
    reading every face's placement: a standing flap's reflected
    placement lies over the flat paper beside its hinge, which every
    later fold keeps, so it never pulls the paper off centre (measured
    on the two-wall case). writePaperPositions() already leaves a
    face moved by a fold that stops short where that fold put it, and
-   writePaperPositions() already leaves a face moved by a fold that
-   stops short where that fold put it, and a later flat fold's held
-   faces rise by their layers as they do today; with standing faces
-   left out of `"all"`, no fold ever lists a standing face among its
-   moving ones, so no new pose arithmetic is needed (derived; Manual QA
-   2 and 5 watch for a flap that drifts).
+   a later flat fold's held faces rise by their layers as they do
+   today; with standing faces left out of `"all"`, no fold ever lists
+   a standing face among its moving ones, so this plan adds no pose
+   arithmetic (derived; Manual QA 2 and 5 watch for a flap that
+   drifts).
+   - **The hinge height is Plan 19's.** A fold that stops short turns
+     its flap about its line raised to the highest face with a point
+     on that line, held faces included, for a valley, or lowered to
+     the lowest for a mountain: pivotLayers() in
+     `docs/src/fold/pose.js`, as
+     [Plan 19, Decision 4](../done/19-fold-angle.md#decisions) changed it.
+     Measured there with one standing fold only. With two, a standing
+     face whose flat placement touches the second fold's line counts
+     towards that fold's pivot, though it no longer lies in the
+     stack: this plan's review tests the two-wall and wing cases for
+     a pivot raised or lowered by a standing face, and for any face
+     crossing, before passing this Decision (derived, not yet seen).
 
 ## Steps
 
@@ -138,8 +157,8 @@ type: plan
 
 ### Step 3: The limits on screen
 
-- Changes `docs/src/main.js` (limits per rest state, the trial of the
-  engine removed), `docs/src/ui/fold-buttons.js` (one button where one
+- Changes `docs/src/main.js` (limits per rest state, Plan 19's
+  hasStandingFold() rule removed), `docs/src/ui/fold-buttons.js` (one button where one
   direction is blocked; the ring capped at the limit) and
   `docs/src/sandbox/pick.js` if the pick needs the limits, per
   Decision 5.
@@ -222,3 +241,18 @@ Wait for the pink oblong with its ten lines.
   layers", the hinge rule, the side rule once a flap stands, the 3D sweep
   test with 15° snapping, the stage centre over the flat faces, and the
   limits shown by the Fold Buttons and the ring; the ghost left out.
+- **2026-11-18T10:51:54Z** — **changed**: the line leaving out the ghost
+  preview removed, since Plan 19 dropped the ghost altogether.
+- **2026-11-18T11:02:43Z** — **changed**: noted that Plan 19 has no ring, so the
+  ring’s part in showing the sweep limit is reworked at review.
+- **2026-11-18T11:24:44Z** — **changed**: Plan 19 now keeps nothing
+  foldable after a standing fold by a session rule, hasStandingFold(),
+  not a trial of the engine, which still cuts folds that leave the
+  flap held; Decision 5 and Step 3 name the rule this plan replaces.
+- **2026-11-18T13:02:17Z** — **changed**: Decision 6 no longer says no new pose
+  arithmetic is needed in general: Plan 19 changed pivotLayers() to
+  count held faces at the hinge, so Decision 6 names that pivot, keeps
+  “this plan adds no pose arithmetic”, and asks this plan’s review to
+  test a standing face’s pull on a second fold’s pivot; a Context line
+  says so; a duplicated sentence in Decision 6 removed. At the Lead
+  Developer’s request.

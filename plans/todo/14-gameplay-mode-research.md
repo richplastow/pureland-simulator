@@ -72,7 +72,7 @@ type: research
 - A click on a Fold Button folds the design's own angle for that fold:
   flat, or 90° for the dart's wings.
 - A mouse drag from a lit fold line works as the Sandbox's does
-  ([Plan 19, Decision 1](./19-fold-angle.md#decisions)): the paper
+  ([Plan 19, Decision 1](../done/19-fold-angle.md#decisions)): the paper
   folds live, its angle following the pointer's distance from the
   line, and returning to the line cancels. But it is only a preview:
   any other release settles at the design's own angle, so Gameplay

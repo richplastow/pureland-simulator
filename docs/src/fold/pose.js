@@ -6,7 +6,7 @@
  */
 
 import { smoothstep } from "./easing.js";
-import { stopsShort } from "./engine.js";
+import { stopsShort, TOLERANCE_METERS } from "./engine.js";
 
 // About one sheet of 80 gsm paper; tuned by eye.
 export const PAPER_THICKNESS_METERS = 0.0001;
@@ -31,9 +31,10 @@ const point = new Float64Array(3);
  *   fold to π to minus its height after, which lands it on top; a face the
  *   fold holds rises to its new height.
  * - A fold that stops short of π turns the faces it moves as one rigid
- *   block, about its line raised to the top of those faces for a valley,
- *   or lowered to their bottom for a mountain, so no layer swings into
- *   the faces it leaves behind. It presses nothing flat, so the faces it
+ *   block, about its line raised to the top of every face on that line,
+ *   moved or held, for a valley, or lowered to their bottom for a
+ *   mountain, as pivotLayers() finds it, so no layer swings into the
+ *   faces it leaves behind. It presses nothing flat, so the faces it
  *   holds keep their height. Its faces keep that turn, and their shift
  *   before it, from then on.
  * - A fold whose `turns` is `"both-sides"` turns the whole paper back by
@@ -201,6 +202,63 @@ export const maxPaperRadius = (sheet) => {
   return radiusMeters;
 };
 
+/** #### Returns the height a fold that stops short turns its faces about
+ * - The highest, for a valley, or the lowest, for a mountain, of every
+ *   face with a point on the fold's line at the stage before the fold: a
+ *   corner on it, an edge along it, or an edge across it. That counts the
+ *   faces the fold holds as well as those it moves, so the moving faces
+ *   turn as one block clear of every layer at the hinge, including a held
+ *   one that only meets the line at a corner.
+ * - The line is the fold's whole line, through its `from` and `to`, met
+ *   within `TOLERANCE_METERS`.
+ * - Allocates nothing, so it is safe on the per-frame path.
+ * - Pure maths, with no DOM or GPU access.
+ * @param faces The sheet's faces.
+ * @param fold The fold.
+ * @param foldIndex The fold's index in the sheet's `folds`.
+ * @returns The height, in layers above the back of the stack.
+ */
+export const pivotLayers = (faces, fold, foldIndex) => {
+  const isValley = fold.type === "valley";
+  const px = fold.from[0];
+  const py = fold.from[1];
+  const length = Math.hypot(fold.to[0] - px, fold.to[1] - py);
+  const nx = -(fold.to[1] - py) / length;
+  const ny = (fold.to[0] - px) / length;
+
+  let pivot = isValley ? -Infinity : Infinity;
+  for (let f = 0; f < faces.length; f++) {
+    const { layers, placements, polygon } = faces[f];
+
+    // Read by index: array destructuring would run an iterator.
+    const placement = placements[foldIndex];
+    const a = placement[0];
+    const b = placement[1];
+    const c = placement[2];
+    const d = placement[3];
+    const tx = placement[4];
+    const ty = placement[5];
+    let nearest = Infinity; // signed distance from the line, in metres
+    let furthest = -Infinity;
+    for (let i = 0; i < polygon.length; i++) {
+      const x = polygon[i][0];
+      const y = polygon[i][1];
+      const offset =
+        (a * x + c * y + tx - px) * nx + (b * x + d * y + ty - py) * ny;
+      nearest = Math.min(nearest, offset);
+      furthest = Math.max(furthest, offset);
+    }
+    const meetsLine =
+      nearest <= TOLERANCE_METERS && furthest >= -TOLERANCE_METERS;
+    if (!meetsLine) continue;
+
+    const below = layers[foldIndex] - 1;
+    pivot = isValley ? Math.max(pivot, below) : Math.min(pivot, below);
+  }
+
+  return pivot;
+};
+
 /** #### Returns how far the model has turned about its upright axis
  * - Each turn-over turns it by −π radians, eased as a fold is, so its
  *   right edge swings towards the viewer; it ends at −π times the count.
@@ -263,28 +321,6 @@ const rotateAboutLine = (angleRadians, fold, heightMeters) => {
   point[0] = px + vx * cos + uy * vz * sin + ux * along;
   point[1] = py + vy * cos - ux * vz * sin + uy * along;
   point[2] = heightMeters + vz * cos + (ux * vy - uy * vx) * sin;
-};
-
-/** #### Returns the height a fold that stops short turns its faces about
- * - The highest of the faces the fold moves, at the stage before it, for a
- *   valley, or the lowest for a mountain, so the moving faces turn as one
- *   block and no layer swings into the faces the fold holds.
- * - Allocates nothing, so it is safe on the per-frame path.
- * @param faces The sheet's faces.
- * @param fold The fold.
- * @param foldIndex The fold's index in the sheet's `folds`.
- * @returns The height, in layers above the back of the stack.
- */
-const pivotLayers = (faces, fold, foldIndex) => {
-  const isValley = fold.type === "valley";
-  let pivot = isValley ? -Infinity : Infinity;
-  for (let f = 0; f < faces.length; f++) {
-    if (!faces[f].movedBy.includes(foldIndex)) continue;
-    const below = faces[f].layers[foldIndex] - 1;
-    pivot = isValley ? Math.max(pivot, below) : Math.min(pivot, below);
-  }
-
-  return pivot;
 };
 
 /** #### Returns the index of the step under way at a sequence position

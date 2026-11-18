@@ -19,8 +19,12 @@
  * the paper, recutting the sandbox sheet; Up and Down press them. With
  * "Fast Fold" ticked, pairs show with no line active, on every line that
  * fits until a mouse is detected, then on those nearest the mouse, each
- * side of a lit line standing in for its button. Undo, Redo and Unfold,
- * and their shortcuts, walk the session back and forth.
+ * side of a lit line standing in for its button. A mouse drag from a lit
+ * line folds the paper live, by the side of the line and the distance from
+ * it, and Shift with Up or Down steps the active line's fold live; a
+ * release or Enter snaps the angle to a whole step and makes the fold,
+ * which may stand short of flat, after which nothing more folds. Undo,
+ * Redo and Unfold, and their shortcuts, walk the session back and forth.
  */
 
 import {
@@ -38,6 +42,7 @@ import {
   writeStartPose,
   writeStretchScale,
 } from "./designs/sheet.js";
+import { unsmoothstep } from "./fold/easing.js";
 import { cutSheet } from "./fold/engine.js";
 import { foldPositionAt, maxPaperRadius } from "./fold/pose.js";
 import { stepSequence } from "./fold/stepper.js";
@@ -45,6 +50,15 @@ import { connectDrag } from "./input/drag.js";
 import { connectMouseDetection } from "./input/mouse.js";
 import { connectPick } from "./input/pick.js";
 import { startSpinReset, stepSpinReset, turnSpin } from "./input/spin.js";
+import {
+  CANCEL_RADIANS,
+  dragAngleRadians,
+  reachesPx,
+  SNAP_RADIANS,
+  snapAngleRadians,
+  stepLiveAngle,
+  stepLiveCentre,
+} from "./sandbox/angle.js";
 import { foldableLines } from "./sandbox/lattice.js";
 import {
   litSegments,
@@ -56,7 +70,12 @@ import {
   writeFoldMiddle,
 } from "./sandbox/line-pick.js";
 import { PATTERNS } from "./sandbox/patterns.js";
-import { createSession, cutSession, foldAt } from "./sandbox/session.js";
+import {
+  createSession,
+  cutSession,
+  foldAt,
+  hasStandingFold,
+} from "./sandbox/session.js";
 import { createLights } from "./scene/lights.js";
 import {
   PAPER_COLOR_SHADES,
@@ -299,15 +318,51 @@ const pickPoint = new Vector3();
 // returning restores, or null.
 let rememberedLine = null;
 
-// The press a Fold Line claimed at `pointerdown`, kept for its release: the
-// line, or null; where it went down, in `stretchGroup`'s frame; the side
-// facing the camera then; and, where the proxy serves it, the line's Fast
-// Fold pair, or null, and the side of the line it went down on.
+// The press a Fold Line claimed at `pointerdown`, kept for its release or
+// its drag: the line, or null; where it went down, in `stretchGroup`'s
+// frame, and on screen, in CSS pixels; the side facing the camera then;
+// where the proxy serves it, the line's Fast Fold pair, or null, and the
+// side of the line it went down on; and whether it has started to drag.
 let claimedLine = null;
 let claimedPair = null;
 let claimedSide = "mountain";
+let claimXPx = 0;
+let claimYPx = 0;
+let isClaimDragging = false;
 let isClaimFrontFacing = true;
 const claimPoint = new Vector3();
+
+// The live fold, while a mouse drag from a Fold Line, or Shift and the
+// arrows on the active line, fold that line live, before the fold is made:
+// whether one shows, whether it is the keyboard's, and whether it has been
+// released, by the mouse's release, Enter or a step back to flat, so that
+// it settles, then is made or dropped; its line, from `restFoldLines`, and
+// whether the camera faced the paper's front at its start, which says
+// which fold a valley is; the angle shown and the angle wanted, signed,
+// positive towards mountain as seen, in radians; the centre shown, a
+// scratch `[x, y]` in metres in the folded plane, which the shown cuts'
+// two centres at the fold are, and the centre wanted; the session cut with
+// the line folded a half turn, per fold as seen, or null until wanted, and
+// the same cut as shown, its two centres at the fold the centre shown; for
+// a drag, the line on screen and each side's reach, fixed at the press;
+// and the step Left or Right takes once a keyboard angle has eased back to
+// flat, or 0.
+const live = {
+  centre: [0, 0],
+  cuts: { mountain: null, valley: null },
+  cycleStep: 0,
+  isActive: false,
+  isByKeyboard: false,
+  isFrontFacing: true,
+  isReleased: false,
+  line: null,
+  radians: 0,
+  reaches: null,
+  screenLine: null,
+  shownCuts: { mountain: null, valley: null },
+  targetCentre: [0, 0],
+  targetRadians: 0,
+};
 
 // The hovered line lit, or null; the side it was lit for; and its segments
 // and the deeper ink they were lit in, so lighting it again writes nothing.
@@ -386,10 +441,12 @@ new ResizeObserver(([entry]) => {
  * - A choice can arrive twice, and does nothing the second time: the
  *   target is the same, and chooseColor() ignores the colour already
  *   chosen.
+ * - Drops a live fold first, restoring the rest sheet.
  * @param choice The choice: `colorId`, or null for none; and `target`,
  *   its `position` and `sheetId`, or null for flat.
  */
 const choose = ({ colorId, target }) => {
+  dropLive();
   Object.assign(sequenceTarget, target);
   if (colorId !== null && target.sheetId === sequenceState.sheetId) {
     chooseColor(colorId);
@@ -452,6 +509,249 @@ const foldLine = (line, isFrontFacing, type) => {
   writeSandboxBar();
 };
 
+/** #### Starts a live fold of a Fold Line, flat
+ * - Puts the hover's light out and hides every pair. A drag clears the
+ *   active line, as an orbit's start does; the keyboard keeps its line
+ *   active, its pair hidden until the paper is flat again.
+ * - The sequence state and target do not move while it shows, so the
+ *   stepper rests, and canLayOut() and canPick() are false.
+ * - Allocates nothing.
+ * @param isByKeyboard True for Shift and the arrows, false for a drag.
+ * @param isFrontFacing True if the camera faced the paper's front at the
+ *   pick or the press.
+ * @param line The line, from `restFoldLines`.
+ */
+const startLive = (isByKeyboard, isFrontFacing, line) => {
+  live.cuts.mountain = null;
+  live.cuts.valley = null;
+  live.cycleStep = 0;
+  live.isActive = true;
+  live.isByKeyboard = isByKeyboard;
+  live.isFrontFacing = isFrontFacing;
+  live.isReleased = false;
+  live.line = line;
+  live.radians = 0;
+  live.shownCuts.mountain = null;
+  live.shownCuts.valley = null;
+  live.targetRadians = 0;
+  live.centre[0] = restCentre[0];
+  live.centre[1] = restCentre[1];
+  live.targetCentre[0] = restCentre[0];
+  live.targetCentre[1] = restCentre[1];
+  if (isByKeyboard) {
+    light(null, true);
+    setOverLine(false);
+    hideFastPairs();
+    if (activePair !== null) activePair.hide();
+  } else {
+    clearPick();
+    hideFastPairs();
+  }
+};
+
+/** #### Sets the angle the live fold wants, cutting its side once
+ * - The first time the angle wanted lies on one side of flat, cuts the
+ *   session with the line folded a half turn that way, as seen, and keeps
+ *   that cut as shown, with its stage centres at both ends of the fold
+ *   replaced by the centre shown, so the pose's slide, which blends the
+ *   two, puts the paper exactly there.
+ * - Allocates only when it cuts: on the first move or step, and on first
+ *   crossing the line.
+ * @param radians The angle wanted, signed, positive towards mountain as
+ *   seen, in radians.
+ */
+const setLiveTarget = (radians) => {
+  live.targetRadians = radians;
+  if (radians === 0) return;
+
+  const seen = radians > 0 ? "mountain" : "valley";
+  if (live.cuts[seen] !== null) return;
+
+  const { position, sheetId } = sequenceState;
+  const { from, to } = live.line;
+  const cut = cutSession(
+    patterns[sheetId],
+    foldAt(session, position, {
+      from,
+      targetRadians: Math.PI, // flat
+      to,
+      type: seenType(live.isFrontFacing, seen),
+    }),
+  );
+  live.cuts[seen] = cut;
+  live.shownCuts[seen] = {
+    ...cut,
+    centres: cut.centres.map((centre, stage) =>
+      stage === position || stage === position + 1 ? live.centre : centre,
+    ),
+  };
+};
+
+/** #### Releases the live fold to settle at an angle, then be made
+ * - The angle wanted becomes the one given, and the centre wanted the
+ *   centre the made fold rests at: the flat fold's own for a half turn,
+ *   or the rest centre for a fold that stops short, as stageCentres()
+ *   keeps it, or for flat, which makes nothing.
+ * - Forgets any step Left or Right left to take.
+ * - Allocates nothing, unless it cuts.
+ * @param radians The angle to settle at, signed, positive towards
+ *   mountain as seen, in radians: 0, or a whole number of steps.
+ */
+const releaseLive = (radians) => {
+  setLiveTarget(radians);
+  live.cycleStep = 0;
+  live.isReleased = true;
+
+  const flatCut =
+    Math.abs(radians) === Math.PI
+      ? live.cuts[radians > 0 ? "mountain" : "valley"]
+      : null;
+  const centre =
+    flatCut === null
+      ? restCentre
+      : flatCut.centres[sequenceState.position + 1];
+  live.targetCentre[0] = centre[0];
+  live.targetCentre[1] = centre[1];
+};
+
+/** #### Returns true if a keyboard angle shows that is not being made
+ * - True while Shift and the arrows hold an angle, or while a step back to
+ *   flat, Left, Right, Escape, a press or a loss of focus eases it back;
+ *   false once Enter has released it to be made.
+ * - Allocates nothing.
+ * @returns True if the keyboard's live fold can still be eased back.
+ */
+const isKeyboardAngleShown = () =>
+  live.isActive &&
+  live.isByKeyboard &&
+  (!live.isReleased || live.targetRadians === 0);
+
+/** #### Eases a keyboard angle back to flat, if one shows unmade
+ * - Allocates nothing.
+ */
+const easeKeyboardAngleBack = () => {
+  if (isKeyboardAngleShown()) releaseLive(0);
+};
+
+/** #### Drops the live fold at once, if there is one, restoring the rest sheet
+ * - For a choice, Undo, Redo or Unfold, which then act on the rest state.
+ */
+const dropLive = () => {
+  if (live.isActive) endLive();
+};
+
+/** #### Ends the live fold without making it, restoring the rest sheet
+ * - Poses the rest sheet at the rest position again, and lays the pairs
+ *   out afresh at the next frame.
+ * - Allocates only if the paper showed a cut, which it swaps back out.
+ */
+const endLive = () => {
+  forgetLive();
+  writeSequenceState();
+  isLayoutStale = true;
+};
+
+/** #### Makes the live fold, once it has settled at a non-zero angle
+ * - Made as foldLine() makes a flat fold, its `targetRadians` the angle
+ *   settled at, but with the sequence state and target both moved to the
+ *   next position, since the paper already shows the fold made: the
+ *   stepper has nothing to animate, and the frame loop never sees the
+ *   paper leave rest, so the new rest state is found here. A half turn
+ *   reuses its cut as the new sheet.
+ * - Allocates, once per fold made.
+ */
+const commitLive = () => {
+  const { isFrontFacing, line, targetRadians } = live;
+  const seen = targetRadians > 0 ? "mountain" : "valley";
+  const radians = Math.abs(targetRadians);
+  const flatCut = live.cuts[seen];
+  const { position, sheetId } = sequenceState;
+  forgetLive();
+
+  session = foldAt(session, position, {
+    from: line.from,
+    targetRadians: radians,
+    to: line.to,
+    type: seenType(isFrontFacing, seen),
+  });
+  sheets[sheetId] =
+    radians === Math.PI ? flatCut : cutSession(patterns[sheetId], session);
+  sequenceState.position = position + 1;
+  sequenceTarget.position = position + 1;
+  clearPick();
+  writeSequenceState();
+  enterRest();
+  writeSandboxBar();
+};
+
+/** #### Marks the live fold ended, and lets its cuts go
+ * - Allocates nothing.
+ */
+const forgetLive = () => {
+  live.cuts.mountain = null;
+  live.cuts.valley = null;
+  live.cycleStep = 0;
+  live.isActive = false;
+  live.line = null;
+  live.reaches = null;
+  live.screenLine = null;
+  live.shownCuts.mountain = null;
+  live.shownCuts.valley = null;
+};
+
+/** #### Advances the live fold one frame, and settles it once released
+ * - Eases the angle shown and the centre shown towards those wanted, and
+ *   poses the paper when either moves. Once a released fold's angle and
+ *   centre have both landed, makes the fold, or, at flat, ends it, then
+ *   takes any step Left or Right left.
+ * - Allocates nothing, but for swapping the paper's geometry as the angle
+ *   shown crosses flat, and for making or ending the fold once.
+ * @param deltaSeconds The time elapsed since the last frame, in seconds.
+ */
+const stepLive = (deltaSeconds) => {
+  if (!live.isActive) return;
+
+  const isAngleChanged = stepLiveAngle(deltaSeconds, live);
+  const isCentreChanged = stepLiveCentre(deltaSeconds, live);
+  if (isAngleChanged || isCentreChanged) writeLivePose();
+
+  const isSettled =
+    live.isReleased &&
+    live.radians === live.targetRadians &&
+    live.centre[0] === live.targetCentre[0] &&
+    live.centre[1] === live.targetCentre[1];
+  if (!isSettled) return;
+
+  if (live.targetRadians !== 0) {
+    commitLive();
+    return;
+  }
+  const step = live.cycleStep;
+  endLive();
+  if (step !== 0) cycleLine(step, pick.facesFront());
+};
+
+/** #### Poses the paper at the live fold's angle shown
+ * - Shows the cut for the side of flat the angle is on, swapping the
+ *   paper's geometry only when that side changes, posed at the rest
+ *   position plus unsmoothstep() of the angle's share of a half turn, so
+ *   the pose's own smoothstep() turns the fold by exactly that angle.
+ * - Allocates nothing, unless it swaps the geometry.
+ */
+const writeLivePose = () => {
+  const { radians } = live;
+  if (radians !== 0) {
+    const sheet = live.shownCuts[radians > 0 ? "mountain" : "valley"];
+    if (sheet !== shownSheet) {
+      shownSheet = sheet;
+      paper.setSheet(sheet);
+    }
+  }
+  paper.setSequencePosition(
+    sequenceState.position + unsmoothstep(Math.abs(radians) / Math.PI),
+  );
+};
+
 // A press on a pair folds its line: the active line's, by the side that
 // faced the camera at the pick, or a Fast Fold pair's line, by the side
 // that faced it at the layout, with no activation. A pointer hovering over
@@ -507,9 +807,11 @@ connectMouseDetection(() => {
 });
 
 // Undo, Redo and Unfold move only the target, so a step under way finishes
-// first, and repeated presses add up, each playing in turn.
+// first, and repeated presses add up, each playing in turn. Each drops a
+// live fold first.
 const sandboxBar = connectSandboxBar(
   () => {
+    dropLive();
     sequenceTarget.position = Math.min(
       sequenceTarget.position + 1,
       session.folds.length,
@@ -517,10 +819,12 @@ const sandboxBar = connectSandboxBar(
     writeSandboxBar();
   },
   () => {
+    dropLive();
     sequenceTarget.position = Math.max(sequenceTarget.position - 1, 0);
     writeSandboxBar();
   },
   () => {
+    dropLive();
     sequenceTarget.position = 0;
     writeSandboxBar();
   },
@@ -561,12 +865,16 @@ chooseMode("sandbox");
 /** #### Returns true if the pairs can be laid out now
  * - In Sandbox Mode, with the lines found for the rest state, the
  *   sequence state at its target, no stretch, fade or spin reset under
- *   way, and no drag turning the paper.
+ *   way, no drag turning the paper, and no live fold showing.
  * - Allocates nothing.
  * @returns True if the scene rests for a layout.
  */
 const canLayOut = () =>
-  isAtRest && isSequenceAtRest() && spinReset.progress >= 1 && !isOrbiting;
+  isAtRest &&
+  isSequenceAtRest() &&
+  spinReset.progress >= 1 &&
+  !isOrbiting &&
+  !live.isActive;
 
 /** #### Returns true if a line can be lit, picked or folded now
  * - As canLayOut(), once the rest state's Fold Lines have been projected
@@ -966,19 +1274,27 @@ const isSequenceAtRest = () =>
  *   spans, once per rest state, so a pointer move compares the hit with at
  *   most a few tens of lines, and lights one by lookup. Also the stage's
  *   centre.
+ * - After a fold that stops short, finds no lines at all, so nothing
+ *   lights, picks or folds until Undo goes back past it: nothing yet
+ *   checks whether a later fold would swing paper through the standing
+ *   flap.
  * - Forgets the remembered keyboard pick, whose line is gone, and marks
  *   the layout stale.
- * - Allocates, so call it only when the paper comes to rest.
+ * - Allocates, so call it only when the paper comes to rest, or a live
+ *   fold is made.
  */
 const enterRest = () => {
-  const sheet = sheets[sequenceState.sheetId];
-  const stage = foldPositionAt(sequenceState.position, sheet);
+  const { position, sheetId } = sequenceState;
+  const sheet = sheets[sheetId];
+  const stage = foldPositionAt(position, sheet);
   restCentre = sheet.centres[stage];
   restFaces = placedFaces(sheet, stage);
-  restLines = foldableLines(
-    patterns[sequenceState.sheetId],
-    restFaces.map(({ polygon }) => polygon),
-  );
+  restLines = hasStandingFold(session, position)
+    ? NONE_AT_REST
+    : foldableLines(
+        patterns[sheetId],
+        restFaces.map(({ polygon }) => polygon),
+      );
   restSegments = restLines.map((line) => ({
     back: litSegments(restFaces, false, line),
     front: litSegments(restFaces, true, line),
@@ -996,11 +1312,13 @@ const enterRest = () => {
   isLayoutStale = true;
 };
 
-// Escape clears the active line if there is one, and forgets the keyboard
-// pick put away; otherwise it hides and shows the toolbar, which the pairs
-// are laid out afresh around: the hidden toolbar leaves the paper alone on
-// screen.
+// Escape eases a keyboard angle back to flat, then clears the active line
+// if there is one, and forgets the keyboard pick put away; otherwise it
+// hides and shows the toolbar, which the pairs are laid out afresh around:
+// the hidden toolbar leaves the paper alone on screen. During a mouse
+// drag, it leaves the drag to its release.
 connectControlsToggle(() => {
+  easeKeyboardAngleBack();
   rememberedLine = null;
   if (clearPick()) return true;
 
@@ -1028,28 +1346,59 @@ const writeSpin = () => {
 // picks, since a mouse press on a line is claimed. Left and Right make the
 // line before or after the active one active, in the lattice's order,
 // among the Fold Lines, at the middle of its longest fold span; Up and
-// Down press its pair's buttons. Focus leaving the canvas puts a keyboard
-// pick away, and focus returning restores it.
+// Down press its pair's buttons. Shift with Up or Down steps the active
+// line's fold live, towards mountain or valley as seen, and Enter makes
+// it; a step back to flat drops it, and Left, Right or Escape first ease
+// it back to flat, as a press or a loss of focus does, while plain Up and
+// Down fold flat at once in its place. Focus leaving the canvas puts a
+// keyboard pick away, and focus returning restores it.
 const pick = connectPick(
   camera,
   canvas,
   {
     keepsHover: foldButtons.holds,
+    onAngleKey: (step) => {
+      if (!live.isActive) {
+        if (activeLine === null || !canPick()) return;
+
+        startLive(true, isPickFrontFacing, activeLine);
+      } else if (!isKeyboardAngleShown() || activeLine !== live.line) {
+        return;
+      }
+
+      const radians = live.targetRadians + step * SNAP_RADIANS;
+      const snapped = Math.sign(radians) * snapAngleRadians(Math.abs(radians));
+      if (snapped === 0) {
+        releaseLive(0);
+        return;
+      }
+      live.cycleStep = 0;
+      live.isReleased = false;
+      setLiveTarget(snapped);
+    },
     onBlur: () => {
+      easeKeyboardAngleBack();
       if (activeLine === null || !isActiveByKeyboard) return;
 
       const line = activeLine;
       clearPick();
       rememberedLine = line;
     },
-    onCycle: (step, isFrontFacing) => {
-      if (!canPick() || restFoldLines.length === 0) return;
+    // The active line stays active through the fold's settling, its strip
+    // put out first, since a half turn slides the paper from under it.
+    onCommitKey: () => {
+      if (!live.isActive || !live.isByKeyboard || live.isReleased) return;
 
-      const count = restFoldLines.length;
-      const index = restFoldLines.indexOf(activeLine);
-      let next = (index + step + count) % count;
-      if (index === -1) next = step > 0 ? 0 : count - 1;
-      pickKeyboardLine(restFoldLines[next], isFrontFacing);
+      clearPick();
+      releaseLive(live.targetRadians);
+    },
+    onCycle: (step, isFrontFacing) => {
+      if (isKeyboardAngleShown()) {
+        releaseLive(0);
+        live.cycleStep = step;
+        return;
+      }
+      cycleLine(step, isFrontFacing);
     },
     onFocus: () => {
       const line = rememberedLine;
@@ -1059,6 +1408,14 @@ const pick = connectPick(
       pickKeyboardLine(line, pick.facesFront());
     },
     onFoldKey: (type) => {
+      if (live.isActive) {
+        if (!live.isByKeyboard || activeLine !== live.line) return;
+
+        const line = activeLine;
+        endLive();
+        foldLine(line, isPickFrontFacing, type);
+        return;
+      }
       if (activePair === null || !canPick()) return;
 
       activePair.press(type);
@@ -1105,6 +1462,24 @@ const pick = connectPick(
   paper.stretchGroup,
 );
 
+/** #### Makes the line before or after the active one active, for Left or Right
+ * - In the lattice's order, among the Fold Lines, wrapping round; with no
+ *   line active, the first for Right or the last for Left.
+ * - Does nothing unless a line can be picked now.
+ * - Allocates nothing, unless its pair is a new one.
+ * @param step −1 for the line before, or 1 for the line after.
+ * @param isFrontFacing True if the camera faces the paper's front.
+ */
+const cycleLine = (step, isFrontFacing) => {
+  if (!canPick() || restFoldLines.length === 0) return;
+
+  const count = restFoldLines.length;
+  const index = restFoldLines.indexOf(activeLine);
+  let next = (index + step + count) % count;
+  if (index === -1) next = step > 0 ? 0 : count - 1;
+  pickKeyboardLine(restFoldLines[next], isFrontFacing);
+};
+
 /** #### Makes a line active from the keyboard, at its longest span's middle
  * - Allocates nothing, unless its pair is a new one.
  * @param line The line, from `restFoldLines`.
@@ -1121,15 +1496,22 @@ const pickKeyboardLine = (line, isFrontFacing) => {
 };
 
 // A mouse press on a lit Fold Line, outside the active line's kept zone,
-// is the line's, decided at `pointerdown`: it never turns the paper, and
-// on release makes the line active, or, where the proxy serves it, presses
-// the button on the side it went down on. Any other press is the drag's,
+// is the line's, decided at `pointerdown`: it never turns the paper. If it
+// does not move, on release it makes the line active, or, where the proxy
+// serves it, presses the button on the side it went down on. Once it
+// moves, it folds the line live, by the side of the line the pointer is on
+// and its distance from the line against each side's reach, fixed at the
+// press; on release, the angle snaps to a whole step, or to flat below
+// `CANCEL_RADIANS`, and the fold settles there. Any press first eases a
+// keyboard angle back to flat. Any other press is the drag's,
 // which clears the active line and hides the pairs as it starts, cancels a
 // reset under way where it is, and takes over at once; the pairs are laid
 // out afresh once it ends. A double-click starts a reset from where the
 // spin is, hiding the pairs.
 connectDrag(canvas, {
   claimsPress: (x, y, pointerType) => {
+    easeKeyboardAngleBack();
+    isClaimDragging = false;
     if (pointerType !== "mouse" || !canPick()) return false;
 
     const hit = pick.hitAt(x, y);
@@ -1138,6 +1520,8 @@ connectDrag(canvas, {
 
     claimedLine = target;
     claimPoint.copy(hit);
+    claimXPx = x;
+    claimYPx = y;
     isClaimFrontFacing = pick.facesFront();
     const index = restFoldLines.indexOf(target);
     claimedPair =
@@ -1147,6 +1531,48 @@ connectDrag(canvas, {
     if (claimedPair !== null) claimedSide = sideOf(screenLines[index], x, y);
 
     return true;
+  },
+  onClaimedDrag: (x, y) => {
+    if (!isClaimDragging) {
+      isClaimDragging = true;
+      const line = claimedLine;
+      claimedLine = null;
+      if (line === null || !canPick() || !restFoldLines.includes(line)) {
+        return;
+      }
+
+      const screenLine = screenLines[restFoldLines.indexOf(line)];
+      live.reaches = reachesPx(screenLine, space.viewport, claimXPx, claimYPx);
+      live.screenLine = screenLine;
+      startLive(false, isClaimFrontFacing, line);
+    }
+    if (!live.isActive || live.isByKeyboard || live.isReleased) return;
+
+    setLiveTarget(dragAngleRadians(live.screenLine, live.reaches, x, y));
+  },
+  onClaimedDragCancel: () => {
+    const isLiveDrag =
+      isClaimDragging &&
+      live.isActive &&
+      !live.isByKeyboard &&
+      !live.isReleased;
+    isClaimDragging = false;
+    if (isLiveDrag) releaseLive(0);
+  },
+  onClaimedDragEnd: (x, y) => {
+    const isLiveDrag =
+      isClaimDragging &&
+      live.isActive &&
+      !live.isByKeyboard &&
+      !live.isReleased;
+    isClaimDragging = false;
+    if (!isLiveDrag) return;
+
+    const radians = dragAngleRadians(live.screenLine, live.reaches, x, y);
+    const size = Math.abs(radians);
+    releaseLive(
+      size < CANCEL_RADIANS ? 0 : Math.sign(radians) * snapAngleRadians(size),
+    );
   },
   onClaimedPress: () => {
     const line = claimedLine;
@@ -1243,6 +1669,9 @@ renderer.setAnimationLoop((timestampMs) => {
   if (stepSequence(deltaSeconds, sheets, sequenceState, sequenceTarget)) {
     writeSequenceState();
   }
+
+  // The live fold eases, and is made or ended once it settles, at rest.
+  stepLive(deltaSeconds);
 
   // True on the step that reaches 1, so the fade ends on exactly its colour.
   if (stepColorFade(deltaSeconds, colorFade)) {

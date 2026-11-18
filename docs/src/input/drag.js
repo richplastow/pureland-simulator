@@ -1,8 +1,8 @@
 /**
  * @fileoverview
  * Reports drags on an element, presses that do not move, and presses that
- * something under the pointer claims, with the slop that tells a press
- * from a drag for each kind of pointer.
+ * something under the pointer claims, moved or not, with the slop that
+ * tells a press from a drag for each kind of pointer.
  */
 
 // How far, in CSS pixels, a mouse press may stray from where it went down
@@ -22,21 +22,25 @@ export const TOUCH_DRAG_THRESHOLD_PX = 10;
  *   outside the window. Mouse, touch and pen share this one path; a second
  *   finger is not primary, and both its press and its moves are ignored.
  * - Asks `claimsPress` first. A claimed press captures the pointer but
- *   never drags and sets no `data-dragging`: on `pointerup`, however far
- *   the pointer has moved, it is reported to `onClaimedPress`, and on
- *   `pointercancel` it is dropped.
+ *   never turns into the element's drag and sets no `data-dragging`. If it
+ *   ends, on `pointerup`, without having moved, it is reported to
+ *   `onClaimedPress`. Once it moves, each move is reported to
+ *   `onClaimedDrag` and its end to `onClaimedDragEnd`, with where the
+ *   pointer is, wherever it is; a browser cancel, on `pointercancel`, is
+ *   reported to `onClaimedDragCancel` instead. A claimed press cancelled
+ *   before it moves is dropped.
  * - Any other press is the drag's. The pointer capture is its only state,
  *   beside whether it has moved: the browser releases it on `pointerup`
  *   and `pointercancel`, which ends the drag, reported to `onDragEnd` if
  *   it moved. A `data-dragging` attribute on the element mirrors it, for
  *   the CSS's grabbing cursor, set on the press and removed when the
  *   capture is lost.
- * - A press moves only once the pointer strays more than its kind's slop
- *   from where it went down: `DRAG_THRESHOLD_PX` for a mouse, and
- *   `TOUCH_DRAG_THRESHOLD_PX` for a touch or a pen. Its first move then
- *   reports the whole way from there, so the drag loses nothing. A press
- *   that ends, on `pointerup`, without having moved is reported as a
- *   press, not a drag; a press cancelled by the browser, on
+ * - A press, claimed or not, moves only once the pointer strays more than
+ *   its kind's slop from where it went down: `DRAG_THRESHOLD_PX` for a
+ *   mouse, and `TOUCH_DRAG_THRESHOLD_PX` for a touch or a pen. Its first
+ *   move then reports the whole way from there, so the drag loses
+ *   nothing. A press that ends, on `pointerup`, without having moved is
+ *   reported as a press, not a drag; a press cancelled by the browser, on
  *   `pointercancel`, is neither.
  * - Cancels the element's `mousedown` default, so a press or a
  *   double-click on it leaves focus where it was, such as on the design
@@ -49,19 +53,32 @@ export const TOUCH_DRAG_THRESHOLD_PX = 10;
  * @param handlers The callbacks: `claimsPress`, called on each press with
  *   where it went down, right and down from the element's top-left corner
  *   in CSS pixels, and its `pointerType`, which returns true to claim it;
- *   `onClaimedPress`, called when a claimed press ends; `onDrag`, called
- *   on each move of a drag with the change since the last event, right
- *   and down, in CSS pixels; `onDragEnd`, called when a drag that moved
- *   ends; and `onPress`, called when a press that is not claimed ends
- *   without moving, with where it ended, as `claimsPress` takes it, and
- *   its `pointerType`.
+ *   `onClaimedDrag`, called on each move of a claimed press that has
+ *   moved, with where the pointer is, as `claimsPress` takes it;
+ *   `onClaimedDragCancel`, called when the browser cancels a claimed
+ *   press that has moved; `onClaimedDragEnd`, called when a claimed press
+ *   that has moved ends, with where it ended, the same way;
+ *   `onClaimedPress`, called when a claimed press ends without having
+ *   moved; `onDrag`, called on each move of a drag with the change since
+ *   the last event, right and down, in CSS pixels; `onDragEnd`, called
+ *   when a drag that moved ends; and `onPress`, called when a press that
+ *   is not claimed ends without moving, with where it ended, as
+ *   `claimsPress` takes it, and its `pointerType`.
  */
 export const connectDrag = (element, handlers) => {
-  const { claimsPress, onClaimedPress, onDrag, onDragEnd, onPress } =
-    handlers;
+  const {
+    claimsPress,
+    onClaimedDrag,
+    onClaimedDragCancel,
+    onClaimedDragEnd,
+    onClaimedPress,
+    onDrag,
+    onDragEnd,
+    onPress,
+  } = handlers;
 
   // Whether the press under way has moved since it went down, and whether
-  // it is claimed; the pointer's position at the last event of the drag,
+  // it is claimed; the pointer's position at the last event of the press,
   // in CSS pixels; and the press's slop, in CSS pixels.
   let hasMoved = false;
   let isClaimed = false;
@@ -76,24 +93,30 @@ export const connectDrag = (element, handlers) => {
 
     element.setPointerCapture(event.pointerId);
     hasMoved = false;
-    isClaimed = claimsPress(event.offsetX, event.offsetY, event.pointerType);
-    if (isClaimed) return;
-
-    element.dataset.dragging = "";
     lastClientX = event.clientX;
     lastClientY = event.clientY;
     slopPx =
       event.pointerType === "mouse"
         ? DRAG_THRESHOLD_PX
         : TOUCH_DRAG_THRESHOLD_PX;
+    isClaimed = claimsPress(event.offsetX, event.offsetY, event.pointerType);
+    if (!isClaimed) element.dataset.dragging = "";
   });
 
-  // A second finger's capture, implicit for a touch, ends no drag.
+  // A second finger's capture, implicit for a touch, ends no drag. A
+  // claimed press still marked as moved here never reached `pointerup`,
+  // which clears the mark, so the browser cancelled it.
   element.addEventListener("lostpointercapture", (event) => {
     if (!event.isPrimary) return;
 
     delete element.dataset.dragging;
-    if (!isClaimed && hasMoved) onDragEnd();
+    if (hasMoved) {
+      if (isClaimed) {
+        onClaimedDragCancel();
+      } else {
+        onDragEnd();
+      }
+    }
     hasMoved = false;
     isClaimed = false;
   });
@@ -103,11 +126,7 @@ export const connectDrag = (element, handlers) => {
   // that leaves the pointer where it was, as a pen's change of pressure
   // can, moves nothing, and nor does one within the slop of the press.
   element.addEventListener("pointermove", (event) => {
-    if (
-      !event.isPrimary ||
-      isClaimed ||
-      !element.hasPointerCapture(event.pointerId)
-    ) {
+    if (!event.isPrimary || !element.hasPointerCapture(event.pointerId)) {
       return;
     }
     const deltaXPixels = event.clientX - lastClientX;
@@ -119,9 +138,13 @@ export const connectDrag = (element, handlers) => {
     if (isWithinSlop) return;
 
     hasMoved = true;
-    onDrag(deltaXPixels, deltaYPixels);
     lastClientX = event.clientX;
     lastClientY = event.clientY;
+    if (isClaimed) {
+      onClaimedDrag(event.offsetX, event.offsetY);
+    } else {
+      onDrag(deltaXPixels, deltaYPixels);
+    }
   });
 
   // The capture is released only after `pointerup`, so it still marks the
@@ -131,7 +154,11 @@ export const connectDrag = (element, handlers) => {
       return;
     }
 
-    if (isClaimed) {
+    if (isClaimed && hasMoved) {
+      // Ended here, so the capture's loss that follows cancels nothing.
+      hasMoved = false;
+      onClaimedDragEnd(event.offsetX, event.offsetY);
+    } else if (isClaimed) {
       onClaimedPress();
     } else if (!hasMoved) {
       onPress(event.offsetX, event.offsetY, event.pointerType);

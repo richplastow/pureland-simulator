@@ -7,7 +7,7 @@ type: plan
 ## Context
 
 - The last of the five Basic Sandbox Mode plans but one, on
-  [Plan 19](./19-fold-angle.md), whose angles it writes out, and before
+  [Plan 19](../done/19-fold-angle.md), whose angles it writes out, and before
   [Plan 21](./21-standing-folds.md). It delivers the research's
   [export as a design](./13-sandbox-mode-research.md#6-export-as-a-design)
   under its ruling: a JSON design file, carrying named fractions and
@@ -36,7 +36,7 @@ type: plan
    `from` and `to` as fraction strings, `type`, `halfTurns`, the
    finished angle as a fraction of a half turn, `"1"` for flat, in
    lowest terms with a denominator of at most 36, so a snap step of
-   15°, 10° or 5° ([Plan 19](./19-fold-angle.md#decisions),
+   15°, 10° or 5° ([Plan 19](../done/19-fold-angle.md#decisions),
    Decision 2) all write exactly, and an optional `note`. Keys are written A-Z, as the repo orders
    properties. A coordinate is a fraction of the sheet's width for x
    and height for y, in lowest terms, such as `"0"`, `"1/2"` or

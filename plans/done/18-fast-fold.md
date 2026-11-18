@@ -8,7 +8,7 @@ type: plan
 
 - Inserted after [Plan 17](./17-sandbox-folds.md), whose picking
   and Fold Buttons it refines, and before
-  [Plan 19](../todo/19-fold-angle.md), which will add a mouse drag from a lit
+  [Plan 19](./19-fold-angle.md), which will add a mouse drag from a lit
   Fold Line to fold straight to an angle. That is why a mouse press on
   a lit line here never turns the paper, while a touch drag turns it
   from anywhere.
@@ -50,7 +50,7 @@ type: plan
   from a lit line starts from the press Decision 1 claims, folds by
   the side of the line the pointer is on, as the proxy (Decision 17)
   reads it, and takes its angle from the pointer's distance from the
-  line ([Plan 19, Decision 1](../todo/19-fold-angle.md#decisions)).
+  line ([Plan 19, Decision 1](./19-fold-angle.md#decisions)).
 - **No rule for the sides can avoid one flip.** A line on screen has no
   direction, so any rule that names one side Mountain must swap sides
   at one slant as the paper turns. Decision 15 puts that flip on the

@@ -8,7 +8,7 @@ type: plan
 
 - The third of the five Basic Sandbox Mode plans, on
   [Plan 16](./16-sandbox-mode.md)'s printed lattice, and before
-  [Plan 19](../todo/19-fold-angle.md), which adds the drag to an angle. It
+  [Plan 19](./19-fold-angle.md), which adds the drag to an angle. It
   delivers the toy: pick a line, press a Fold Button, and the paper
   folds flat along it; Undo, Redo and Unfold walk back and forth.
 - It implements the research's

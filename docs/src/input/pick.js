@@ -2,8 +2,8 @@
  * @fileoverview
  * Finds where the pointer meets the paper's plane, as a hover or as a
  * press that does not move, and which side of the paper faces the camera,
- * for picking a lattice line; and passes on the arrow keys that cycle the
- * lines and fold them from the keyboard.
+ * for picking a lattice line; and passes on the keys that cycle the lines,
+ * fold them flat, and step and make a fold's angle from the keyboard.
  */
 
 import { Plane, Raycaster, Vector2, Vector3 } from "three";
@@ -41,9 +41,12 @@ const raycaster = new Raycaster();
  *   `onPress` calls for a press that does not move, and any point through
  *   the returned hitAt().
  * - With the canvas focused, reports Left and Right as a step back or
- *   forward through the lines, a held key repeating; and Up and Down as a
- *   mountain or valley fold, ignoring a held key's repeats. Each cancels
- *   its default. Reports the canvas losing and regaining focus.
+ *   forward through the lines, a held key repeating; Up and Down as a
+ *   mountain or valley fold, ignoring a held key's repeats; Shift+Up and
+ *   Shift+Down as a step of the fold's angle towards mountain or valley, a
+ *   held key repeating; and Enter as the angle's commit, ignoring a held
+ *   key's repeats. Each cancels its default. Reports the canvas losing and
+ *   regaining focus.
  * - The hit passed on is a scratch vector, overwritten on the next event
  *   or call of hitAt(): copy it rather than keep it.
  * - Allocates nothing per move, press or key.
@@ -51,16 +54,18 @@ const raycaster = new Raycaster();
  * @param canvas The canvas the scene renders to.
  * @param handlers The callbacks: `keepsHover`, called as the pointer
  *   leaves the canvas with the element it moves onto, or null, which
- *   returns true if the hover goes on there; `onBlur` and `onFocus`,
- *   called as the canvas loses and regains focus; `onCycle`, called on
- *   Left or Right with the step, −1 for Left or 1 for Right, and true if
- *   the camera faces the paper's front; `onFoldKey`, called on Up or Down
- *   with the fold, `"mountain"` or `"valley"`; `onHover`, called on a
- *   hover with the hit, a Vector3 in metres in `stretchGroup`'s frame, or
- *   null, true if the camera faces the paper's front, the pointer's
- *   position, right and down from the canvas's top-left corner in CSS
- *   pixels, and its `pointerType`; and `onPress`, called on a press that
- *   does not move, as `onHover` is.
+ *   returns true if the hover goes on there; `onAngleKey`, called on
+ *   Shift+Up or Shift+Down with the step, 1 towards mountain for Up or −1
+ *   towards valley for Down; `onBlur` and `onFocus`, called as the canvas
+ *   loses and regains focus; `onCommitKey`, called on Enter; `onCycle`,
+ *   called on Left or Right with the step, −1 for Left or 1 for Right, and
+ *   true if the camera faces the paper's front; `onFoldKey`, called on Up
+ *   or Down with the fold, `"mountain"` or `"valley"`; `onHover`, called
+ *   on a hover with the hit, a Vector3 in metres in `stretchGroup`'s
+ *   frame, or null, true if the camera faces the paper's front, the
+ *   pointer's position, right and down from the canvas's top-left corner
+ *   in CSS pixels, and its `pointerType`; and `onPress`, called on a press
+ *   that does not move, as `onHover` is.
  * @param stretchGroup The paper's innermost group, whose local XY plane
  *   the posed paper lies in.
  * @returns facesFront(), which returns true if the camera faces the
@@ -70,8 +75,17 @@ const raycaster = new Raycaster();
  *   same way, and its `pointerType`.
  */
 export const connectPick = (camera, canvas, handlers, stretchGroup) => {
-  const { keepsHover, onBlur, onCycle, onFocus, onFoldKey, onHover, onPress } =
-    handlers;
+  const {
+    keepsHover,
+    onAngleKey,
+    onBlur,
+    onCommitKey,
+    onCycle,
+    onFocus,
+    onFoldKey,
+    onHover,
+    onPress,
+  } = handlers;
 
   /** #### Sets the paper's plane, and returns which side faces the camera
    * @returns True if the camera faces the paper's front.
@@ -127,9 +141,18 @@ export const connectPick = (camera, canvas, handlers, stretchGroup) => {
       onCycle(event.key === "ArrowLeft" ? -1 : 1, readPlane());
     } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
+      if (event.shiftKey) {
+        onAngleKey(event.key === "ArrowUp" ? 1 : -1);
+        return;
+      }
       if (event.repeat) return;
 
       onFoldKey(event.key === "ArrowUp" ? "mountain" : "valley");
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      if (event.repeat) return;
+
+      onCommitKey();
     }
   });
 

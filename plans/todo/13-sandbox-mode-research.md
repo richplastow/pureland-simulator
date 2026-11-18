@@ -572,11 +572,10 @@ part names its options and a recommendation, for discussion.
   short of flat is a finishing fold (see
   [Angles](#7-angles-several-standing-folds-a-stepping-stone-to-the-fold-tree)), which the
   ring could show by a change of colour below 180°.
-- **The ghost**, left out of the first Sandbox plan, and added later if
-  the ring alone proves hard to judge by: a second, translucent mesh
-  sharing the paper's geometry index, with its own position buffer, posed
-  at the drag angle. It is allocated when a drag starts and written only
-  when the angle changes, so nothing is allocated per frame.
+- **No ghost.** A second, translucent mesh posed at the drag angle was
+  considered, to judge an angle by eye. It is not built: in
+  [Plan 19](../done/19-fold-angle.md#decisions) the paper itself folds live as
+  the pointer moves, which shows the angle directly.
 - **Dragging needs an alternative.** WCAG 2.2's Dragging Movements, at
   level AA, asks that anything done by dragging can be done with a
   single pointer without dragging (**Source**:
@@ -814,7 +813,7 @@ both the folding and the drag to an angle.
    pointer, hovering other lines while a pick stands, Up and Down to
    fold, and a Fast Fold mode that shows Fold Buttons without a pick.
    Visible proof: a fold in one touch.
-5. [Plan 19, Dragging a Fold Button to an angle](./19-fold-angle.md):
+5. [Plan 19, Dragging a Fold Button to an angle](../done/19-fold-angle.md):
    the drag, its ring snapping to 15°, a finishing fold left standing,
    and the keyboard and tap alternatives. Visible proof: a corner stood
    at 90°.
@@ -1180,3 +1179,5 @@ everywhere. C: hold until Gameplay Mode's question is ruled.
 - **2026-11-14T14:05:33Z** — **planned**: Plans 15 to 20 drafted from this
   research; section 9 links them, the sandbox folding split into Plans 17
   and 18; the line-id bullet reworded, since lattice lines are never saved.
+- **2026-11-18T10:51:54Z** — **ruled**: the ghost dropped, since Plan 19's
+  paper folds live during the drag; by the Lead Developer.

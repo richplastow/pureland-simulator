@@ -1,16 +1,16 @@
 ---
-title: Gameplay Mode and Fast Fold briefs, 16 to 17 November 2026
-description: The fifteen briefs put to the Lead Developer via /feed-me on Plan 14's open questions and the decisions Plans 18 and 19 raised, each with its background, options, recommendation and the answer given.
+title: Gameplay Mode, Fast Fold and fold angle briefs, 16 to 18 November 2026
+description: The twenty briefs put to the Lead Developer via /feed-me on Plan 14's open questions and the decisions Plans 18 and 19 raised, each with its background, options, recommendation and the answer given.
 type: note
 ---
 
-# Gameplay Mode and Fast Fold briefs, 16 to 17 November 2026
+# Gameplay Mode, Fast Fold and fold angle briefs, 16 to 18 November 2026
 
-These are the fifteen briefs put to the Lead Developer via /feed-me on
+These are the twenty briefs put to the Lead Developer via /feed-me on
 [Plan 14's open questions](./14-gameplay-mode-research.md#open-questions)
 and on the decisions that
 [Plan 18](../done/18-fast-fold.md#decisions) and
-[Plan 19](./19-fold-angle.md#decisions) raised along the way. Each is
+[Plan 19](../done/19-fold-angle.md#decisions) raised along the way. Each is
 kept as it was given, so the reasoning survives beside the rulings, which
 are folded into the plans themselves. Two briefs were followed by a
 narrower question when the answer left a detail open; those follow-ups
@@ -29,13 +29,18 @@ and links point at the plans as they stood when the brief was written.
 | [Q6](#q6) | A: an unplaced line shows its own pair; neighbours fade | [Plan 18, Decision 14](../done/18-fast-fold.md#decisions) |
 | [Q7](#q7) | A: finished means the design's own stacking | [Plan 14](./14-gameplay-mode-research.md#results) |
 | [Q8](#q8) | Own answer: a touch drag always orbits; then B, a 10 px touch allowance | [Plan 18, Decision 1](../done/18-fast-fold.md#decisions) |
-| [Q9](#q9) | Own answer: side sets direction, distance sets angle; then B, snap on release | [Plan 19, Decisions 1 and 2](./19-fold-angle.md#decisions), [Plan 20](./20-export-design.md) |
+| [Q9](#q9) | Own answer: side sets direction, distance sets angle; then B, snap on release | [Plan 19, Decisions 1 and 2](../done/19-fold-angle.md#decisions), [Plan 20](./20-export-design.md) |
 | [Q10](#q10) | C: a mouse drag previews, then settles at the design's angle | [Plan 14](./14-gameplay-mode-research.md#fold-buttons) |
 | [Q11](#q11) | A: each fold named in the design data, announced on pick | [Plan 14](./14-gameplay-mode-research.md#7-the-toolbar) |
 | [Q12](#q12) | A: reported like any other dead end; better designs expected | [Plan 14](./14-gameplay-mode-research.md#6-the-game-layer) |
 | [Q13](#q13) | B, with some plain lines on some designs | [Plan 14](./14-gameplay-mode-research.md#plain-lines-and-a-choice-of-direction) |
 | [Q14](#q14) | B: a wrong-direction fold is a dead end at once | [Plan 14](./14-gameplay-mode-research.md#6-the-game-layer) |
 | [Q15](#q15) | A: lives, points and hints all per design | [Plan 14](./14-gameplay-mode-research.md#6-the-game-layer) |
+| [Q16](#q16) | A: the ghost preview dropped | [Plan 19, Context](../done/19-fold-angle.md#context) |
+| [Q17](#q17) | B: each side's reach fixed at the press | [Plan 19, Decision 1](../done/19-fold-angle.md#decisions) |
+| [Q18](#q18) | A: no readout; the paper alone shows the angle | [Plan 19, Decision 3](../done/19-fold-angle.md#decisions) |
+| [Q19](#q19) | B: Shift+Up and Shift+Down move the angle live, Enter folds | [Plan 19, Decision 6](../done/19-fold-angle.md#decisions) |
+| [Q20](#q20) | C: mouse and keyboard only; step buttons deferred | [Plan 19, Decision 7](../done/19-fold-angle.md#decisions), [backlog](./backlog/20261118-single-pointer-fold-angle.md) |
 
 ## Q1
 
@@ -816,3 +821,253 @@ when the design set is settled.
 **Answer** (2026-11-17):
 
 > A
+
+## Q16
+
+**Should Plan 19 drop the ghost preview, now that the paper itself folds live
+during a drag?** (put on 2026-11-18)
+
+**Background.**
+- **What the ghost was:** a see-through copy of the paper, posed at the angle
+  being dragged. On release, the real paper would then animate to that angle.
+  It was designed for the old Plan 19, where you dragged a Fold Button and the
+  paper stayed still until you let go. The ring round the button was then the
+  only sign of the angle, and the ghost was a way to "fine-tune by eye"
+  ([Sandbox research, Fold Buttons](./13-sandbox-mode-research.md#fold-buttons)).
+- **The earlier ruling, 12 November:** leave the ghost out of the first angle
+  plan, and add it later only if the ring alone proved hard to judge by. Plan
+  19's Context said this, and its Manual QA 10 asked you to judge it, with the
+  ghost as the "next backlog item" if the ring wasn't enough. Plan 21 also said
+  the ghost isn't part of it.
+- **What has changed since:** your Decision 1 ruling on 17 November makes the
+  paper fold live as the pointer moves. The real paper now does what the ghost
+  was for.
+- **One gap the live fold leaves:** while you drag, the paper follows your exact
+  angle. On release it eases to the nearest 15° (Decision 2). So during the drag
+  you see, say, 82°, but you can't see the 90° it will settle at. A ghost could
+  show that snapped angle beside the live paper. Q18 (the readout) may cover
+  this more cheaply, with a number.
+- **Why it matters now:** the review has to either rewrite or delete the ghost's
+  lines in the Context and Manual QA 10.
+
+**Options.**
+- **A. Drop it.** Plan 19's Context says the live fold replaces the ghost.
+  Manual QA 10 goes, and Plan 21's line about the ghost goes with it. No
+  backlog item. If the snap ever surprises players, it can be raised as new
+  work.
+- **B. Keep it as a possible later item.** Manual QA 10 is rewritten to ask
+  whether the live paper is enough to judge the angle where it will settle. If
+  not, a backlog item follows for a ghost at the snapped angle. This costs one
+  QA step and keeps an idea alive that Q18 may make unnecessary.
+
+**Recommendation: A.** The live fold already shows the angle. The settle point
+is a readout question, better answered in Q18 than by a second mesh.
+
+**Answer** (2026-11-18):
+
+> A
+
+## Q17
+
+**As a mouse drag moves away from a Fold Line, what fixes how far the pointer
+must travel to reach 180°?** (put on 2026-11-18)
+
+**Background.**
+- **Your ruling, 17 November (Decision 1):** the angle is the pointer's distance
+  from the line. It is 0° on the line and 180° at 40 px or less from "the
+  viewport's nearest edge", with the Mountain side running to one edge and the
+  Valley side to the other.
+- **What the agent added, marked as inferred:** "nearest edge" means the edge
+  you reach by going from the pointer at right angles to the line. The distance
+  from the line to 40 px inside that edge, measured along that same path,
+  counts as 180°. The agent recalculated this on every pointer move.
+- **Where the inference goes wrong:** the result depends on the line's slant.
+  For a horizontal or vertical line, the edge is always equally far away, so
+  only the distance from the line matters. For a diagonal line, the path at
+  right angles meets the viewport edge at different distances depending on
+  where along the line the pointer is. Slide the pointer parallel to a diagonal
+  line, keeping the same distance from it, and the angle still changes. That
+  breaks "precisely equivalent to the distance from the line".
+- **Other facts:**
+  - Plan 18 already puts every line on screen and knows which side of it is
+    Mountain and which is Valley (Decisions 15 and 17), so either option below
+    can be built on what exists.
+  - A line close to one edge leaves only a short run to 180° on that side, for
+    example 30 px. That makes the drag touchy there under either option.
+- **Why it matters now:** Step 1's pure function and its Agent QA tested the old
+  fixed scale, where 120 px gave 180°. The review has to rewrite them to
+  whichever rule you choose here.
+
+**Options.**
+- **A. Recalculate on every move, as the plan said.** Each pointer move finds
+  the edge at right angles to the line through the pointer, and works out the
+  angle from there. It follows the wording of the ruling. On diagonal lines the
+  angle drifts as the pointer slides along the line.
+- **B. Fix each side's scale at the press.** When the press goes down, measure
+  from the press point at right angles to the line to 40 px inside the viewport
+  edge, once on the Mountain side and once on the Valley side. Each side keeps
+  that scale for the whole drag. From then on the angle depends only on the
+  pointer's distance from the line, whatever the slant, and you still reach
+  180° near the edge you're dragging towards. It costs two measurements per
+  press and nothing per move.
+
+**Recommendation: B.** It keeps your "precisely equivalent to the distance from
+the line" true for every slant, and it's cheaper. The touchy short run near an
+edge affects both options equally. Manual QA can judge it by eye.
+
+**Answer** (2026-11-18):
+
+> B
+
+## Q18
+
+**While a mouse drag folds the paper live, should anything else show the
+angle?** (put on 2026-11-18)
+
+**Background.**
+- **What Decision 3 said:** a ring round the Fold Button being dragged. Its arc
+  grows clockwise from the top, a full ring at 180°, with the angle in degrees
+  inside it. It was designed when the drag was on a button and the paper didn't
+  move until release.
+- **What has changed:** under Decision 1, the drag now starts on the line
+  itself, and no button is under the pointer to wrap a ring round. In Fast Fold
+  the line's pair may be on screen nearby, but outside Fast Fold, pressing a lit
+  line that isn't picked yet shows no buttons at all.
+- **What the paper already shows, and what it doesn't:**
+  - It shows the angle live, in 3D.
+  - Perspective makes 80° and 90° hard to tell apart by eye.
+  - It doesn't show where the fold will settle. Under Decision 2, release eases
+    to the nearest 15° (Q16 named this gap).
+  - The direction is clear from which way the flap moves.
+- **Accessibility:** a mouse drag is a sighted, pointer-only action, so a screen
+  reader needs no live readout during it. No live region exists in the app yet.
+- **Why it matters now:** Decision 3, Step 2 and Manual QA 2 to 4 were all
+  written around the ring. The review rewrites them to this ruling.
+
+**Options.**
+- **A. No readout.** The paper alone shows the angle, and the release reveals
+  where it settles. This is the least to build. Exact angles such as a 90° wall
+  then depend on judging the paper by eye, then undoing and trying again.
+- **B. A small degree label by the pointer.** A pill near the cursor shows the
+  angle the fold will settle at, such as "90°". It changes only when that
+  snapped angle changes, and goes on release. There's no ring. It fills Q16's
+  gap at the cost of one positioned element. Manual QA checks that it doesn't
+  hide the flap.
+- **C. A ring and label by the pointer.** As B, but with Decision 3's ring round
+  the cursor as well. It shows the angle at a glance too, but repeats what the
+  paper and the number already say, and puts more on screen right where you're
+  looking.
+
+**Recommendation: B.** The paper shows the angle, and the label shows the one
+thing the paper can't, which is where the fold will settle. The ring would only
+repeat both.
+
+**Answer** (2026-11-18):
+
+> A
+
+## Q19
+
+**How does the keyboard fold the active line to an angle short of flat?** (put
+on 2026-11-18)
+
+**Background.**
+- **The keyboard today (Plan 18, Decision 7):** with the canvas focused, Left
+  and Right move through the lines, lighting one as active. Up folds it
+  mountain and Down folds it valley, both flat. The canvas declares those four
+  keys to assistive technology. The Fold Buttons are out of the Tab order, so
+  keyboard folding happens on the canvas alone.
+- **What Plan 19's Decision 6 said:** Up and Down on a focused Fold Button step
+  the angle, shown by the ring, and Enter folds. Both halves are gone: the
+  buttons can't take focus, and Plan 18 gave Up and Down to the flat fold. The
+  ring went in Q18.
+- **Keys already in use:**
+  - Cmd+Z and Cmd+Shift+Z (Ctrl+Y on Windows) undo and redo.
+  - Escape belongs to the toolbar's show and hide toggle.
+  - Nothing uses Shift with the arrows, or Enter on the canvas.
+- **Why it matters:** the Web Content Accessibility Guidelines (WCAG) 2.2,
+  criterion 2.1.1 Keyboard (level A, the base level), asks that everything a
+  mouse can do, the keyboard can do. If angles are mouse only, the app falls
+  short of that until a keyboard route arrives. Standing folds only come into
+  play from this plan onwards, and Plan 21 builds on them.
+
+**Options.**
+- **A. Flat only from the keyboard for now.** No new keys. Angles are mouse only
+  in this plan, with a backlog item for a keyboard route. This is the least to
+  build, but it leaves a level A gap open, and Plan 21's standing folds would
+  be mouse only too.
+- **B. Shift+Up and Shift+Down move the angle live.** With a line active,
+  Shift+Up moves the fold 15° towards mountain and Shift+Down 15° towards
+  valley. This is the same single axis as the mouse drag, from 180° mountain
+  through flat to 180° valley, and the paper folds live at each step. Enter
+  folds at the angle shown, and stepping back to flat cancels, as dragging
+  back to the line does. Plain Up and Down keep folding flat at once. It adds
+  two key combinations to the canvas's declared shortcuts and one Manual QA
+  step, and reuses the drag's live fold.
+- **C. Number keys set the angle.** With a line active, 1 to 9 might fold to
+  15° to 135°, for example. It's quick for experts, but it's hard to discover,
+  gives no direction without an extra key, and breaks if the step later
+  shrinks to 10° or 5°.
+
+**Recommendation: B.** It mirrors the mouse drag step for step, so one live fold
+serves both, and it closes the level A gap in this plan rather than leaving it
+in the backlog.
+
+**Answer** (2026-11-18):
+
+> B
+
+## Q20
+
+**Can someone without a mouse drag still reach an angle, on a touch screen or
+with any pointer that can't drag?** (put on 2026-11-18)
+
+**Background.**
+- **Who has no route today:**
+  - **Touch users.** Your Q8 ruling (17 November) makes the angle drag mouse
+    only, and a touch drag on a Fold Line always turns the paper. A tap picks
+    the line, and its Fold Buttons fold flat.
+  - **People who can point but not drag,** such as those using a head pointer
+    or with a tremor.
+  - Under Plan 19 as ruled, both groups can fold flat but never to an angle.
+    They can't reach the standing folds that Plan 21 builds on either.
+- **The standard:** WCAG 2.2, criterion 2.5.7 Dragging Movements (level AA),
+  asks that anything done by dragging can also be done with single clicks or
+  taps. W3C's guidance page (read 2026-11-18) says a keyboard equivalent "does
+  not automatically meet this success criterion", so Q19's Shift and arrow
+  keys don't cover it. Its examples include tapping to select an item and then
+  using "adjacent controls" to move it, and step buttons beside a map.
+- **The plan contradicted itself:** "Done when" promised an angle "from the
+  mouse, a touch screen and the keyboard", and Manual QA 9 dragged a button
+  with a finger. Both predated your Q8 ruling and had to change whichever
+  option you chose.
+- **What Q19 already built:** a live fold that moves 15° per step along one
+  axis, from mountain through flat to valley, with Enter to fold. Any buttons
+  for this could drive that same path.
+
+**Options.**
+- **A. Mouse and keyboard only, for good.** Touch and single-pointer users fold
+  flat only. "Done when" and Manual QA 9 are corrected, and no backlog item is
+  written. This is the least work. It leaves the level AA gap open
+  permanently, and keeps standing folds out of reach on phones.
+- **B. Step buttons in the sandbox bar, in this plan.** While a line is picked,
+  the bar shows three more buttons: one stepping the fold towards mountain, one
+  towards valley, and one confirming the fold. These are the touch equivalents
+  of Shift+Up, Shift+Down and Enter, sharing their code path. This closes the
+  gap and makes standing folds work on phones. It costs three icon buttons,
+  room in the bar at phone width, a Manual QA step or two, and a somewhat
+  bigger plan.
+- **C. The same buttons, deferred.** Plan 19 states that angles are mouse and
+  keyboard for now and corrects "Done when" and Manual QA 9. A dated backlog
+  item records option B's design as the intended route, to be picked up before
+  Gameplay Mode or with Plan 21. Plan 19 stays at its present size, and the gap
+  is recorded rather than forgotten.
+
+**Recommendation: B.** Q19's ruling already built the live step and confirm, so
+the buttons are a thin layer on top. Without them, phones can't reach Plan 21's
+standing folds at all. If you'd rather keep Plan 19 lean for its unattended
+run, C is the safe second choice.
+
+**Answer** (2026-11-18):
+
+> C
