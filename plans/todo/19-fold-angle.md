@@ -29,7 +29,7 @@ type: plan
   (Decision 6), the Steps and the Manual QA are reworked at this
   plan's review, which also weighs whether a ring is still needed when
   the paper shows the angle, and how
-  [Plan 18](./18-fast-fold.md#decisions)'s Up and Down on the canvas
+  [Plan 18](../done/18-fast-fold.md#decisions)'s Up and Down on the canvas
   reach an angle.
 - The ghost, a translucent preview of the fold during the drag, is
   left out as the ruling says, and may follow once this plan's Manual
@@ -47,7 +47,7 @@ type: plan
 
 1. **A mouse drag from a lit Fold Line folds it live, its angle the
    pointer's distance from the line.** Mouse only: a touch drag
-   always orbits ([Plan 18](./18-fast-fold.md#decisions),
+   always orbits ([Plan 18](../done/18-fast-fold.md#decisions),
    Decision 1), and the drag relies on the mouse's precision and
    hover. The press is the one Plan 18 claims for the line, and the
    paper follows the pointer as it moves, easing quickly to each new

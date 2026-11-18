@@ -25,25 +25,21 @@
       class="scene"
       tabindex="0"
       role="img"
+      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
       aria-label="A sheet of origami paper, which folds into designs or along a printed grid, and turns when dragged"
     ></canvas>
     <div class="controls">
       <div class="choices" role="radiogroup" aria-label="Mode">
         <label>
-          <input type="radio" name="mode" value="presentation" checked />
+          <input type="radio" name="mode" value="presentation" />
           Presentation
         </label>
         <label>
-          <input type="radio" name="mode" value="sandbox" />
+          <input type="radio" name="mode" value="sandbox" checked />
           Sandbox
         </label>
       </div>
-      <div
-        class="choices patterns"
-        role="radiogroup"
-        aria-label="Pattern"
-        hidden
-      >
+      <div class="choices patterns" role="radiogroup" aria-label="Pattern">
         <label>
           <input
             type="radio"
@@ -71,7 +67,12 @@
         <button type="button" data-redo disabled>Redo</button>
         <button type="button" data-unfold disabled>Unfold</button>
       </div>
-      <div class="choices designs" role="radiogroup" aria-label="Design">
+      <div
+        class="choices designs"
+        role="radiogroup"
+        aria-label="Design"
+        hidden
+      >
         <label>
           <input type="radio" name="design" value="pencil" checked />
           Pencil
@@ -100,6 +101,10 @@
       <label>
         <input type="checkbox" checked data-fold-lines />
         Fold lines
+      </label>
+      <label hidden>
+        <input type="checkbox" checked data-fast-fold />
+        Fast Fold
       </label>
       <div class="paper-colors" role="radiogroup" aria-label="Paper colour">
         <input

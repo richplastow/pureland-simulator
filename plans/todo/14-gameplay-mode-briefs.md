@@ -9,7 +9,7 @@ type: note
 These are the fifteen briefs put to the Lead Developer via /feed-me on
 [Plan 14's open questions](./14-gameplay-mode-research.md#open-questions)
 and on the decisions that
-[Plan 18](./18-fast-fold.md#decisions) and
+[Plan 18](../done/18-fast-fold.md#decisions) and
 [Plan 19](./19-fold-angle.md#decisions) raised along the way. Each is
 kept as it was given, so the reasoning survives beside the rulings, which
 are folded into the plans themselves. Two briefs were followed by a
@@ -22,13 +22,13 @@ and links point at the plans as they stood when the brief was written.
 | Q | Answer | Recorded in |
 | --- | --- | --- |
 | [Q1](#q1) | A: both places updated to the arrangement by slant | [Plan 14](./14-gameplay-mode-research.md#5-fold-buttons-as-dom-buttons-over-the-canvas) |
-| [Q2](#q2) | A: steep lines slide up or down by screen half | [Plan 18, Decision 16](./18-fast-fold.md#decisions) |
-| [Q3](#q3) | B: other pairs give way; no room of its own, a click activates | [Plan 18, Decision 17](./18-fast-fold.md#decisions) |
-| [Q4](#q4) | A: the lit line's pair counts; the furthest fades | [Plan 18, Decision 17](./18-fast-fold.md#decisions) |
-| [Q5](#q5) | Own answer: the pick is put away on blur, restored on return | [Plan 18, Decision 8](./18-fast-fold.md#decisions) |
-| [Q6](#q6) | A: an unplaced line shows its own pair; neighbours fade | [Plan 18, Decision 14](./18-fast-fold.md#decisions) |
+| [Q2](#q2) | A: steep lines slide up or down by screen half | [Plan 18, Decision 16](../done/18-fast-fold.md#decisions) |
+| [Q3](#q3) | B: other pairs give way; no room of its own, a click activates | [Plan 18, Decision 17](../done/18-fast-fold.md#decisions) |
+| [Q4](#q4) | A: the lit line's pair counts; the furthest fades | [Plan 18, Decision 17](../done/18-fast-fold.md#decisions) |
+| [Q5](#q5) | Own answer: the pick is put away on blur, restored on return | [Plan 18, Decision 8](../done/18-fast-fold.md#decisions) |
+| [Q6](#q6) | A: an unplaced line shows its own pair; neighbours fade | [Plan 18, Decision 14](../done/18-fast-fold.md#decisions) |
 | [Q7](#q7) | A: finished means the design's own stacking | [Plan 14](./14-gameplay-mode-research.md#results) |
-| [Q8](#q8) | Own answer: a touch drag always orbits; then B, a 10 px touch allowance | [Plan 18, Decision 1](./18-fast-fold.md#decisions) |
+| [Q8](#q8) | Own answer: a touch drag always orbits; then B, a 10 px touch allowance | [Plan 18, Decision 1](../done/18-fast-fold.md#decisions) |
 | [Q9](#q9) | Own answer: side sets direction, distance sets angle; then B, snap on release | [Plan 19, Decisions 1 and 2](./19-fold-angle.md#decisions), [Plan 20](./20-export-design.md) |
 | [Q10](#q10) | C: a mouse drag previews, then settles at the design's angle | [Plan 14](./14-gameplay-mode-research.md#fold-buttons) |
 | [Q11](#q11) | A: each fold named in the design data, announced on pick | [Plan 14](./14-gameplay-mode-research.md#7-the-toolbar) |

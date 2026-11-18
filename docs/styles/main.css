@@ -30,6 +30,9 @@
   --fold-button-hover-scale: 1.1; /* a hovered or focused button's size */
   /* a hovered or focused Fold Button's white veil, 0 to 1 */
   --fold-button-hover-veil: 0.3;
+  /* an outgoing keyboard pair's stay, shrinking back, before it fades: as
+     long as the hover change */
+  --fold-button-linger-duration: 0.15s;
   /* a Fold Button's icon, inside its circle */
   --fold-button-icon-size: 1.5rem;
   /* a Fold Button's diameter: 32px by default, above WCAG 2.2's 24px
@@ -75,6 +78,15 @@ body {
 }
 
 /*
+ * Set by src/main.js while a mouse hovers where a press would belong to a
+ * lit Fold Line, which takes the press instead of turning the paper. Before
+ * the rule below, so a drag's grabbing cursor wins.
+ */
+.scene[data-over-line] {
+  cursor: pointer;
+}
+
+/*
  * Set by src/input/drag.js while a drag holds the pointer. That module
  * cancels the press's default, to keep focus where it was, which in Firefox
  * also stops the canvas's active state, so the cursor follows this instead.
@@ -95,11 +107,11 @@ body {
 }
 
 /*
- * The two Fold Buttons over a picked line, made by src/ui/fold-buttons.js,
- * which inserts them after the canvas, so they paint over it, and writes
- * `--fold-buttons-x` and `--fold-buttons-y`, the point on screen, in CSS
- * pixels, that the pair centres on. The pair is kept wholly within the
- * viewport, so a pick near its edge still leaves both buttons in reach.
+ * A pair of Fold Buttons on a Fold Line, made by src/ui/fold-buttons.js,
+ * which inserts each pair after the canvas, so it paints over it, and
+ * writes `--fold-buttons-x` and `--fold-buttons-y`, the point on screen, in
+ * CSS pixels, that the pair centres on. src/ui/fold-button-layout.js keeps
+ * the pair wholly within the viewport, so both buttons stay in reach.
  */
 .fold-buttons {
   position: fixed;
@@ -108,12 +120,30 @@ body {
   display: flex;
   gap: var(--controls-gap);
   translate:
-    clamp(0px, calc(var(--fold-buttons-x, 0px) - 50%), calc(100dvw - 100%))
-    clamp(0px, calc(var(--fold-buttons-y, 0px) - 50%), calc(100dvh - 100%));
+    calc(var(--fold-buttons-x, 0px) - 50%)
+    calc(var(--fold-buttons-y, 0px) - 50%);
   opacity: 1;
   transition:
     opacity var(--fold-button-fade-duration),
     display var(--fold-button-fade-duration) allow-discrete;
+}
+
+/*
+ * On a shallow line the pair is stacked across it, `data-stacked`, with
+ * Mountain on top: the DOM keeps Valley first, so the column is reversed.
+ */
+.fold-buttons[data-stacked] {
+  flex-direction: column-reverse;
+}
+
+/*
+ * The one pair never shown, which src/ui/fold-buttons.js measures for a
+ * pair's size: laid out, but invisible, out of reach of the pointer and of
+ * assistive technology.
+ */
+.fold-buttons[data-measured] {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* The pair fades in from nothing each time it is shown. */
@@ -124,7 +154,7 @@ body {
 }
 
 /*
- * Hidden while no line is picked, by the `hidden` attribute, which the
+ * Hidden while its line shows no pair, by the `hidden` attribute, which the
  * `display` above would otherwise override, as with `.choices[hidden]`.
  * The transition holds `display` until the fade out ends, and the pointer
  * passes through to the canvas as soon as it starts.
@@ -135,7 +165,18 @@ body {
   pointer-events: none;
 }
 
-/* A pressed button's bump plays out, and the pair holds, before it fades. */
+/*
+ * The keyboard's pair, as its line stops being active, shrinks back from
+ * its hovered look before it fades.
+ */
+.fold-buttons[hidden][data-lingering] {
+  transition-delay: var(--fold-button-linger-duration);
+}
+
+/*
+ * A pressed button's bump plays out, and the pair holds, before it fades.
+ * After the linger, so the bump's longer hold wins.
+ */
 .fold-buttons[hidden]:has([data-bumped]) {
   transition-delay: calc(
     var(--fold-button-bump-duration) + var(--fold-button-bump-hold-duration)
@@ -146,9 +187,9 @@ body {
  * Each Fold Button is a plain circle in graphic colours, so it reads as a
  * control laid over the paper. src/ui/fold-buttons.js writes the paper
  * colour's two shades, `--fold-button-deeper` and `--fold-button-lighter`,
- * and marks the pair `data-over-white` when the paper under the pick shows
- * its white side. Over the coloured side, the lighter shade behind black
- * ink.
+ * on the pairs' parent, and marks a pair `data-over-white` when the paper
+ * under it shows its white side. Over the coloured side, the lighter shade
+ * behind black ink.
  */
 .fold-buttons button {
   position: relative;
@@ -189,15 +230,22 @@ body {
 
 /*
  * A hovered or focused button grows and lightens towards white, which on
- * the white side, already white, leaves the growth alone to show it.
+ * the white side, already white, leaves the growth alone to show it. So
+ * does each button of the keyboard's pair, `data-emphasised`, which no
+ * button's focus marks; and the button whose side of a lit Fold Line the
+ * mouse is on, `data-proxied`, which a click there presses.
  */
 .fold-buttons button:hover,
-.fold-buttons button:focus-visible {
+.fold-buttons button:focus-visible,
+.fold-buttons[data-emphasised] button,
+.fold-buttons button[data-proxied] {
   scale: var(--fold-button-hover-scale);
 }
 
 .fold-buttons button:hover::before,
-.fold-buttons button:focus-visible::before {
+.fold-buttons button:focus-visible::before,
+.fold-buttons[data-emphasised] button::before,
+.fold-buttons button[data-proxied]::before {
   opacity: var(--fold-button-hover-veil);
 }
 
@@ -244,7 +292,12 @@ body {
   stroke-width: var(--fold-button-stroke-width);
 }
 
-/* Fixed, and later in the document, so it paints over the canvas. */
+/*
+ * Fixed, and later in the document, so it paints over the canvas. Its box
+ * spans the viewport's width, so the pointer passes through it, and only
+ * its controls, the direct children, take it: a Fold Line beside them stays
+ * within reach.
+ */
 .controls {
   position: fixed;
   inset-inline: 0;
@@ -253,27 +306,42 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   gap: var(--controls-gap);
+  pointer-events: none;
   transition: opacity var(--controls-fade-duration);
+}
+
+.controls:not([data-hidden]) > * {
+  pointer-events: auto;
 }
 
 /*
  * The hidden toolbar, toggled by Escape in src/ui/controls-toggle.js:
- * transparent, and passed through by the pointer to the canvas, but still
- * within keyboard reach, which `visibility`, `display` or `inert` would end.
+ * transparent, and passed through by the pointer to the canvas, as its
+ * controls take it only while it shows, but still within keyboard reach,
+ * which `visibility`, `display` or `inert` would end.
  */
 .controls[data-hidden] {
   opacity: 0;
-  pointer-events: none;
 }
 
 /*
- * The fold-lines checkbox sits beside the choices, centred on their line.
- * Only the bar's own label: the choices' labels sit within `.choices`.
+ * The "Fold lines" and "Fast Fold" checkboxes sit beside the choices,
+ * centred on their line. Only the bar's own labels: the choices' labels sit
+ * within `.choices`.
  */
 .controls > label {
   display: inline-flex;
   align-items: center;
   gap: var(--fold-lines-gap);
+}
+
+/*
+ * "Fast Fold" shows in Sandbox Mode alone, by its label's `hidden`
+ * attribute, which the `display` above would otherwise override, as with
+ * `.choices[hidden]`.
+ */
+.controls > label[hidden] {
+  display: none;
 }
 
 /*

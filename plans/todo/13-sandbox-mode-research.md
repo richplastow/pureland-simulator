@@ -809,7 +809,7 @@ both the folding and the drag to an angle.
    line by click or tap, the icon Fold Buttons coloured by the facing
    side, a click folding flat with an invisible sheet swap, Undo, Redo,
    Unfold and the shortcuts. Visible proof: the blintz by hand.
-4. [Plan 18, Fast Fold, and sharper pointer and keyboard folding](./18-fast-fold.md),
+4. [Plan 18, Fast Fold, and sharper pointer and keyboard folding](../done/18-fast-fold.md),
    added on 2026-11-16 after Plan 17's manual QA: lines that take the
    pointer, hovering other lines while a pick stands, Up and Down to
    fold, and a Fast Fold mode that shows Fold Buttons without a pick.

@@ -7,7 +7,7 @@ type: backlog
 ## Problem
 
 Fast Fold picks its layout by whether a mouse has moved over the window
-since load ([Plan 18](../18-fast-fold.md)). A player with a mouse that
+since load ([Plan 18](../../done/18-fast-fold.md)). A player with a mouse that
 has not yet moved sees the touch layout, a Fold Button pair on every
 line, which switches to the nearby layout on the first move.
 

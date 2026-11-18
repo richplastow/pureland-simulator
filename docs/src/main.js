@@ -3,21 +3,24 @@
  * Entry point: draws a lit sheet of paper, which shadows itself, on a
  * transparent canvas. In Presentation Mode it folds the paper into the
  * design a radio chooses, turning it over where the design says, or back
- * to flat; in Sandbox Mode it unfolds the paper to the flat sheet of the
- * pattern a radio chooses, with the pattern's lattice printed on it. It
- * stretches the flat sheet from one shape to the next between them while
- * turning it to the next's starting pose and lean, prints each design's
- * fold lines on it as it folds and unfolds while the "Fold lines" checkbox
- * is ticked, or always in Sandbox Mode, but fades them out on the finished
- * model at rest, fades its front to the colour a swatch names, or a design
- * or pattern names once it takes over the flat sheet, and turns it like a
- * turntable as a drag on the canvas moves, easing it back on a
- * double-click; Escape hides and shows the toolbar. In Sandbox Mode at
- * rest, a hover lights the nearest lattice line, and a click, a tap or the
- * arrow keys pick one, showing its two Fold Buttons, which fold it flat,
- * valley or mountain as the player sees the paper, recutting the sandbox
- * sheet; Undo, Redo and Unfold, and their shortcuts, walk the session back
- * and forth.
+ * to flat; in Sandbox Mode, where the page starts, it unfolds the paper to
+ * the flat sheet of the pattern a radio chooses, with the pattern's lattice
+ * printed on it. It stretches the flat sheet from one shape to the next
+ * between them while turning it to the next's starting pose and lean,
+ * prints each design's fold lines on it as it folds and unfolds while the
+ * "Fold lines" checkbox is ticked, or always in Sandbox Mode, but fades
+ * them out on the finished model at rest, fades its front to the colour a
+ * swatch names, or a design or pattern names once it takes over the flat
+ * sheet, and turns it like a turntable as a drag on the canvas moves,
+ * easing it back on a double-click; Escape hides and shows the toolbar.
+ * In Sandbox Mode at rest, a hover lights the nearest Fold Line, and a
+ * click, a tap or Left and Right make one active, showing its two Fold
+ * Buttons on it, which fold it flat, valley or mountain as the player sees
+ * the paper, recutting the sandbox sheet; Up and Down press them. With
+ * "Fast Fold" ticked, pairs show with no line active, on every line that
+ * fits until a mouse is detected, then on those nearest the mouse, each
+ * side of a lit line standing in for its button. Undo, Redo and Unfold,
+ * and their shortcuts, walk the session back and forth.
  */
 
 import {
@@ -39,6 +42,7 @@ import { cutSheet } from "./fold/engine.js";
 import { foldPositionAt, maxPaperRadius } from "./fold/pose.js";
 import { stepSequence } from "./fold/stepper.js";
 import { connectDrag } from "./input/drag.js";
+import { connectMouseDetection } from "./input/mouse.js";
 import { connectPick } from "./input/pick.js";
 import { startSpinReset, stepSpinReset, turnSpin } from "./input/spin.js";
 import { foldableLines } from "./sandbox/lattice.js";
@@ -63,6 +67,16 @@ import { createPaper } from "./scene/paper.js";
 import { connectColorSwatches } from "./ui/color-swatches.js";
 import { connectControlsToggle } from "./ui/controls-toggle.js";
 import { connectDesignRadios } from "./ui/design-radios.js";
+import { connectFastFold } from "./ui/fast-fold.js";
+import {
+  PAIR_GAP_PX,
+  PAIR_HITZONE_PX,
+  placeBesideClick,
+  placeOnPoint,
+  POINTER_CLEARANCE_PX,
+  sideOf,
+  zoneContains,
+} from "./ui/fold-button-layout.js";
 import { connectFoldButtons } from "./ui/fold-buttons.js";
 import { connectFoldLinesToggle } from "./ui/fold-lines-toggle.js";
 import { connectModeRadios } from "./ui/mode-radios.js";
@@ -96,6 +110,7 @@ const NONE_AT_REST = Object.freeze([]);
 const PICK_DISTANCE_METERS = 0.008;
 
 const canvas = document.querySelector(".scene");
+const controls = document.querySelector(".controls");
 
 // Every design and every pattern, keyed by its `id`, for its colour.
 const designs = Object.fromEntries(
@@ -117,7 +132,7 @@ const sheets = {
     ]),
   ),
 };
-const [firstDesign] = DESIGNS;
+const [firstPattern] = PATTERNS;
 
 // The sphere that holds the paper over every design's whole fold sequence,
 // so the camera never moves while the paper folds or switches sheets. A
@@ -149,17 +164,17 @@ const camera = new PerspectiveCamera(
 );
 const timer = new Timer();
 
-// The paper starts as the first design, finished, in Presentation Mode, and
-// stays there until a design or a mode is chosen. A finished model at rest
-// shows no fold lines, whatever the "Fold lines" checkbox says, so the
-// lines start hidden. The target names that same point, so the stepper has
-// nothing to do at load. The target's `linesOn` follows the checkbox, which
-// a browser may restore on reload, or is forced on in Sandbox Mode, and
-// governs the lines while the paper folds and unfolds.
+// The paper starts in Sandbox Mode, at rest on the first pattern's flat
+// sheet, position 0, with its lattice showing, as the mode forces the fold
+// lines on, and stays there until a pattern or a mode is chosen. The target
+// names that same point, so the stepper has nothing to do at load. The
+// target's `linesOn` follows the checkbox, which a browser may restore on
+// reload, or is forced on in Sandbox Mode, and governs the lines while the
+// paper folds and unfolds.
 const sequenceTarget = {
   linesOn: true, // replaced by the checkbox's state at connection
-  position: firstDesign.steps.length,
-  sheetId: firstDesign.id,
+  position: 0,
+  sheetId: firstPattern.id,
 };
 const forceLinesOn = connectFoldLinesToggle((linesOn) => {
   sequenceTarget.linesOn = linesOn;
@@ -167,30 +182,30 @@ const forceLinesOn = connectFoldLinesToggle((linesOn) => {
 const sequenceState = {
   direction: 0,
   linesFade: 0,
-  linesVisibility: 0,
-  position: firstDesign.steps.length,
-  sheetId: firstDesign.id,
-  stretchFromId: firstDesign.id,
+  linesVisibility: 1,
+  position: 0,
+  sheetId: firstPattern.id,
+  stretchFromId: firstPattern.id,
   stretchProgress: 1,
 };
 
-// The paper takes the first design's colour from its first frame.
+// The paper takes the first pattern's colour from its first frame.
 const paper = createPaper(
-  PAPER_COLORS[firstDesign.colorId],
+  PAPER_COLORS[firstPattern.colorId],
   paperRadiusMeters,
   sheets[sequenceState.sheetId],
 );
 
-// The front's colour fade, done at load, with the first design's swatch
+// The front's colour fade, done at load, with the first pattern's swatch
 // checked, whatever the browser restored on reload. A swatch's colour
 // starts at once, whatever the fold sequence is doing, and a design's when
 // it takes over the flat sheet, or at once if the paper already holds it;
-// each fades from the colour then showing. The lit line and the Fold
+// each fades from the colour then showing. The lit lines and the Fold
 // Buttons follow the colour chosen at once, through `chosenColorId`.
 const colorFade = { progress: 1 };
-let chosenColorId = firstDesign.colorId;
+let chosenColorId = firstPattern.colorId;
 const chooseColor = connectColorSwatches(
-  firstDesign.colorId,
+  firstPattern.colorId,
   PAPER_COLORS,
   (colorId) => {
     paper.startFrontColorFade(PAPER_COLORS[colorId]);
@@ -215,7 +230,7 @@ const spinReset = { fromPitchRadians: 0, fromYawRadians: 0, progress: 1 };
 // Sandbox Mode's session: the folds made so far, with any undone tail kept
 // for Redo, on the pattern the target names. Reset to empty whenever a
 // pattern or Sandbox Mode is chosen, which discards it without a warning.
-let isSandbox = false;
+let isSandbox = true;
 let session = createSession();
 
 // The state the paper rests in, in Sandbox Mode, found once per rest state:
@@ -223,7 +238,8 @@ let session = createSession();
 // lines its lattice can fold along there, and each line's segments, seen
 // from each side of the paper, in the same order; the spans of those lines
 // that are folds, with paper on both sides, which a press or a hover picks
-// from, and the lines that have one, which the arrow keys cycle; and the
+// from, all together and per line, in the same order as the lines; the
+// Fold Lines, those with a span, which the arrow keys cycle; and the
 // stage's centre, which the pose slides the paper by. No faces or lines
 // while not at rest.
 let isAtRest = false;
@@ -233,40 +249,97 @@ let restFoldLines = NONE_AT_REST;
 let restLines = NONE_AT_REST;
 let restSegments = NONE_AT_REST;
 let restSpans = NONE_AT_REST;
+let restSpansByLine = NONE_AT_REST;
 
-// The pick: the line picked, or null; the point its Fold Buttons centre
-// above, in `stretchGroup`'s frame; which side faced the camera when it was
-// made, which says which fold a valley is; which side of the paper shows
-// under it, which says the buttons' colours; and whether the buttons have
-// been placed since it, or the canvas's size, last changed.
+// The Fold Lines on screen, in CSS pixels, each line's `index` its index in
+// `restFoldLines`, as fold-button-layout.js takes them: projected after
+// each frame that a layout event marks stale, while the scene rests, and
+// emptied while a drag or a resize leaves them out of date. The
+// space the pairs are laid out in, made once: the toolbar's controls to
+// keep clear of, a pair's size, measured from the CSS, and the viewport.
+// Which side faced the camera at the last layout, which a Fast Fold pair's
+// press folds by.
+let screenLines = NONE_AT_REST;
+const space = {
+  exclusions: NONE_AT_REST,
+  pair: {
+    gapPx: PAIR_GAP_PX,
+    heightPx: 0, // measured at each layout
+    hitzonePx: PAIR_HITZONE_PX,
+    widthPx: 0, // measured at each layout
+  },
+  pointerClearancePx: POINTER_CLEARANCE_PX,
+  viewport: { height: 0, width: 0 }, // the canvas's, written on resize
+};
+let isLayoutStale = true;
+let layoutFrontFacing = true;
+
+// Whether a drag is turning the paper, which lights nothing and lays out
+// nothing until it ends; and whether a mouse has been detected, which
+// switches Fast Fold from the touch layout to the nearby one.
+let hasMouse = false;
+let isOrbiting = false;
+
+// The active line: the line picked, or null; its fold spans, whose hitzone
+// is part of the kept zone; whether Left or Right picked it; its pair, or
+// null, and whether that pair is one of Fast Fold's touch layout; the point
+// its pair was placed by, in `stretchGroup`'s frame; which side faced the
+// camera when it was picked, which says which fold a valley is; and which
+// side of the paper shows under the pick, which says the pair's colours.
+let activeLine = null;
+let activePair = null;
+let activeSpans = NONE_AT_REST;
+let isActiveByKeyboard = false;
+let isActivePairFast = false;
 let isPickFrontFacing = true;
 let isPickOnFront = true;
-let isPickPlaced = false;
-let pickedLine = null;
 const pickPoint = new Vector3();
 
-// The line lit, the pick or the hover's preview, or null; the side it was
-// lit for; and its segments and the deeper ink they were lit in, so
-// lighting it again writes nothing.
+// The keyboard's pick, put away as the canvas lost focus, which focus
+// returning restores, or null.
+let rememberedLine = null;
+
+// The press a Fold Line claimed at `pointerdown`, kept for its release: the
+// line, or null; where it went down, in `stretchGroup`'s frame; the side
+// facing the camera then; and, where the proxy serves it, the line's Fast
+// Fold pair, or null, and the side of the line it went down on.
+let claimedLine = null;
+let claimedPair = null;
+let claimedSide = "mountain";
+let isClaimFrontFacing = true;
+const claimPoint = new Vector3();
+
+// The hovered line lit, or null; the side it was lit for; and its segments
+// and the deeper ink they were lit in, so lighting it again writes nothing.
 let isLitFrontFacing = true;
 let litDeeperInk = null;
 let litLine = null;
 let litLineSegments = null;
 
-// The colour id and the side of the paper the Fold Buttons' colours were
-// written for.
-let buttonsColorId = null;
-let isButtonsOnFront = null;
+// Whether the canvas carries `data-over-line`, and the pair whose button
+// the proxy marks, or null.
+let isOverLine = false;
+let proxiedPair = null;
 
-// A press's or a hover's point in the folded plane, `[x, y]` in metres,
-// rewritten in place.
+// The colour id the Fold Buttons' colours were written for.
+let buttonsColorId = null;
+
+// A point in the folded plane, `[x, y]` in metres, rewritten in place: a
+// press's or a hover's, and one under a pair, for its colours.
 const foldedPoint = [0, 0];
+const themePoint = [0, 0];
+
+// Scratch for a point carried to the screen, created once: the projected
+// vector, and the result, `x` and `y` in CSS pixels.
+const projected = new Vector3();
+const screenPoint = { x: 0, y: 0 };
 
 scene.add(paper.group, ...createLights(paperRadiusMeters));
 
 /** #### Matches the camera and drawing buffer to the canvas's CSS size
  * - The camera keeps its elevation and moves along its line of sight, so
  *   the paper's bounding sphere fills the view's smaller dimension.
+ * - Writes the layout's viewport, which the canvas fills.
  * @param width The canvas's width, in CSS pixels.
  * @param height The canvas's height, in CSS pixels.
  */
@@ -289,15 +362,18 @@ const resize = (width, height) => {
 
   // CSS sizes the canvas, so Three.js must not set its style.
   renderer.setSize(width, height, false);
+  space.viewport.height = height;
+  space.viewport.width = width;
 };
 
 resize(canvas.clientWidth, canvas.clientHeight);
 
-// A new size moves the pick point on screen, so the Fold Buttons are placed
-// again after the next frame's render.
+// A new size moves the lines on screen, so nothing is picked by their old
+// place, and the pairs are laid out again after the next frame's render.
 new ResizeObserver(([entry]) => {
   resize(entry.contentRect.width, entry.contentRect.height);
-  isPickPlaced = false;
+  screenLines = NONE_AT_REST;
+  isLayoutStale = true;
 }).observe(canvas);
 
 /** #### Passes a design's or a pattern's choice on to the target and colour
@@ -337,34 +413,37 @@ const choosePattern = (choice) => {
 const checkedDesignChoice = connectDesignRadios(PAPER_COLORS, choose);
 const checkedPatternChoice = connectPatternRadios(PAPER_COLORS, choosePattern);
 
-/** #### Folds the picked line flat, as a Fold Button says, recutting the sheet
- * - The fold is the pick's line, `from` and `to` as the lattice oriented
- *   them, the button's fold turned into the front's terms by the side
- *   that faced the camera at the pick, flat. It replaces the session with
- *   one that keeps the folds before the paper's position, k, then this
- *   fold, recuts the pattern's sheet from it, and sets the target to
- *   k + 1.
+/** #### Folds a line flat, as a Fold Button says, recutting the sheet
+ * - The fold is the line, `from` and `to` as the lattice oriented them,
+ *   the button's fold turned into the front's terms by the side that
+ *   faced the camera when its pair was placed, flat. It replaces the
+ *   session with one that keeps the folds before the paper's position, k,
+ *   then this fold, recuts the pattern's sheet from it, and sets the
+ *   target to k + 1.
  * - Swaps the new sheet in at once, at rest at k, before the step starts:
  *   both sheets are cut along the same first k folds, so the new one,
  *   posed at k, covers the same paper, in the same order; only heights in
  *   deep stacks may settle.
  * - Does nothing unless the paper is still at rest: a choice, an Undo or
- *   a Redo made since the pick moves the target at once, but the pick
- *   clears only on the next frame, and a fold at the old position would
- *   override the move, or fall outside an emptied session.
+ *   a Redo made since the pair showed moves the target at once, but the
+ *   pairs hide only on the next frame, and a fold at the old position
+ *   would override the move, or fall outside an emptied session.
  * - Allocates, on the press only.
+ * @param line The line, from `restFoldLines`.
+ * @param isFrontFacing True if the camera faced the paper's front when the
+ *   pair was placed.
  * @param type The fold as the player sees it, `"mountain"` or `"valley"`.
  */
-const foldPick = (type) => {
-  if (pickedLine === null || !canPick()) return;
+const foldLine = (line, isFrontFacing, type) => {
+  if (!canPick()) return;
 
   const { position, sheetId } = sequenceState;
-  const { from, to } = pickedLine;
+  const { from, to } = line;
   session = foldAt(session, position, {
     from,
     targetRadians: Math.PI, // flat
     to,
-    type: seenType(isPickFrontFacing, type),
+    type: seenType(isFrontFacing, type),
   });
   sheets[sheetId] = cutSession(patterns[sheetId], session);
   sequenceTarget.position = position + 1;
@@ -373,12 +452,59 @@ const foldPick = (type) => {
   writeSandboxBar();
 };
 
+// A press on a pair folds its line: the active line's, by the side that
+// faced the camera at the pick, or a Fast Fold pair's line, by the side
+// that faced it at the layout, with no activation. A pointer hovering over
+// a pair lights the pair's line, as the paper beside the pair does, while
+// the button itself shows the hover, so the proxy marks nothing and the
+// canvas's cursor is not the line's; over the active line's pair, its own
+// strip stays lit. Leaving the pair for anywhere but the paper puts the
+// light out, as leaving the canvas does.
 const foldButtons = connectFoldButtons(
-  camera,
   canvas,
-  foldPick,
-  paper.stretchGroup,
+  (type, pair) => {
+    if (pair === activePair) {
+      foldLine(activeLine, isPickFrontFacing, type);
+      return;
+    }
+    const line = restFoldLines[pair.placement.lineIndex];
+    if (line !== undefined) foldLine(line, layoutFrontFacing, type);
+  },
+  (pair) => {
+    if (!canPick()) return;
+
+    const line =
+      pair === null || pair === activePair
+        ? null
+        : (restFoldLines[pair.placement.lineIndex] ?? null);
+    light(line === activeLine ? null : line, pick.facesFront());
+    setOverLine(false);
+    setProxied(null, null);
+  },
 );
+
+// Ticking Fast Fold lays its pairs out at the next frame; unticking hides
+// them, and the active line, if the keyboard picked it among them, takes
+// Slow Fold's pair at the next frame.
+const fastFold = connectFastFold(
+  foldButtons,
+  (x, y) => isOverWhiteAt(x, y),
+  (isOn) => {
+    if (!isOn) hideFastPairs();
+    isLayoutStale = true;
+  },
+);
+
+// The first mouse move or press switches Fast Fold to the nearby layout,
+// which the move's own hover runs, since detection comes first. Only an
+// active line needs a layout, to give its pair back if it was one of the
+// touch layout's: a layout with no line active would fade the nearby pairs
+// the move has just shown.
+connectMouseDetection(() => {
+  hasMouse = true;
+  hideFastPairs();
+  if (activeLine !== null) isLayoutStale = true;
+});
 
 // Undo, Redo and Unfold move only the target, so a step under way finishes
 // first, and repeated presses add up, each playing in turn.
@@ -408,49 +534,218 @@ const writeSandboxBar = () => {
   sandboxBar.setLimits(session.folds.length, sequenceTarget.position);
 };
 
-// Choosing a mode forces the fold lines on in Sandbox Mode, or releases
-// them in Presentation Mode, shows the sandbox bar in Sandbox Mode only,
-// and passes on the choice of the checked pattern or design, as if that
-// radio had been chosen. A mode can arrive twice, and does nothing the
-// second time but empty an empty session.
-connectModeRadios((mode) => {
+/** #### Applies a mode: its fold lines, its toolbar, and its choice
+ * - Forces the fold lines on in Sandbox Mode, or releases them in
+ *   Presentation Mode, shows the sandbox bar and the "Fast Fold" checkbox
+ *   in Sandbox Mode only, and passes on the choice of the checked pattern
+ *   or design, as if that radio had been chosen.
+ * - A mode can arrive twice, and does nothing the second time but empty an
+ *   empty session.
+ * @param mode `"presentation"` or `"sandbox"`.
+ */
+const chooseMode = (mode) => {
   isSandbox = mode === "sandbox";
   forceLinesOn(isSandbox);
   sandboxBar.setShown(isSandbox);
+  fastFold.setShown(isSandbox);
   if (isSandbox) {
     choosePattern(checkedPatternChoice());
   } else {
     choose(checkedDesignChoice());
   }
-});
+};
 
-/** #### Returns true if a line can be lit or picked now
+connectModeRadios(chooseMode);
+chooseMode("sandbox");
+
+/** #### Returns true if the pairs can be laid out now
  * - In Sandbox Mode, with the lines found for the rest state, the
- *   sequence state at its target, and no stretch, fade or spin reset
- *   under way. A held drag reports no hover and no press.
+ *   sequence state at its target, no stretch, fade or spin reset under
+ *   way, and no drag turning the paper.
  * - Allocates nothing.
- * @returns True if a line can be lit or picked.
+ * @returns True if the scene rests for a layout.
+ */
+const canLayOut = () =>
+  isAtRest && isSequenceAtRest() && spinReset.progress >= 1 && !isOrbiting;
+
+/** #### Returns true if a line can be lit, picked or folded now
+ * - As canLayOut(), once the rest state's Fold Lines have been projected
+ *   to the screen, after the frame that found them, and again since a drag
+ *   or a resize last moved them there: until then, a hover or a press
+ *   between a drag's release and the next frame would read the pairs and
+ *   the sides from where the lines were.
+ * - Allocates nothing.
+ * @returns True if a line can be lit, picked or folded.
  */
 const canPick = () =>
-  isAtRest && isSequenceAtRest() && spinReset.progress >= 1;
+  canLayOut() && screenLines.length === restFoldLines.length;
 
-/** #### Clears the pick, if there is one, and the lit line
- * - Hides the Fold Buttons, if they show.
+/** #### Makes a line the active line, lighting it and showing its pair
+ * - Replaces any active line, whose pair fades, or, if it is one of the
+ *   touch layout's, stays without its emphasis. The hover's light goes
+ *   out, and any remembered keyboard pick is forgotten.
+ * - The caller has written `pickPoint`, the point the pair is placed by:
+ *   the click, or the middle of the line's longest span for the keyboard;
+ *   and `foldedPoint`, the same point in the folded plane, where the side
+ *   of the paper showing gives the pair's colours, or, with no paper
+ *   there, the side facing the camera.
+ * - Allocates nothing, unless its pair is a new one.
+ * @param line The line, from `restFoldLines`.
+ * @param isFrontFacing True if the camera faces the paper's front.
+ * @param isByKeyboard True if Left, Right or focus picked it.
+ */
+const activate = (line, isFrontFacing, isByKeyboard) => {
+  // A keyboard pick among the touch layout's pairs, after a pick that hid
+  // them, needs them laid out again.
+  const wasHidingTouchPairs = activeLine !== null && !isActiveByKeyboard;
+  if (isByKeyboard && isAmongTouchPairs(true) && wasHidingTouchPairs) {
+    isLayoutStale = true;
+  }
+  if (activeLine !== null) deactivate();
+
+  activeLine = line;
+  activeSpans = restSpansByLine[restLines.indexOf(line)];
+  isActiveByKeyboard = isByKeyboard;
+  isPickFrontFacing = isFrontFacing;
+  isPickOnFront =
+    showsFrontAt(restFaces, isFrontFacing, foldedPoint) ?? isFrontFacing;
+  rememberedLine = null;
+  light(null, true);
+  paper.lightActiveLine(
+    PAPER_COLOR_SHADES[chosenColorId].deeper,
+    restCentre,
+    GRAPHIC_BLACK,
+    line,
+    segmentsOf(line, isFrontFacing),
+  );
+  showActivePair();
+};
+
+/** #### Clears the active line, if there is one, and the hover's light
+ * - Its pair fades, or, if it is one of the touch layout's, stays without
+ *   its emphasis; Fast Fold's pairs are laid out again at the next frame.
  * - Allocates nothing, so it is safe on every pointer move.
- * @returns True if there was a pick to clear.
+ * @returns True if there was an active line to clear.
  */
 const clearPick = () => {
-  const hadPick = pickedLine !== null;
+  const hadPick = activeLine !== null;
   if (hadPick) {
-    pickedLine = null;
-    foldButtons.hide();
+    deactivate();
+    isLayoutStale = true;
   }
   light(null, true);
+  setOverLine(false);
+  setProxied(null, null);
 
   return hadPick;
 };
 
-/** #### Lights a line, or none, in the inks of the printed lines beneath it
+/** #### Puts the active line out and lets its pair go
+ * - Allocates nothing.
+ */
+const deactivate = () => {
+  activeLine = null;
+  activeSpans = NONE_AT_REST;
+  paper.clearActiveLine();
+  if (activePair !== null) {
+    if (isActivePairFast) {
+      activePair.setEmphasised(false);
+    } else {
+      activePair.hide();
+    }
+    activePair = null;
+    isActivePairFast = false;
+  }
+};
+
+/** #### Hides every Fast Fold pair, and the proxy's mark
+ * - The active line's pair, if it is one of them, is let go: the next
+ *   layout shows Slow Fold's pair for it.
+ * - Allocates nothing.
+ */
+const hideFastPairs = () => {
+  fastFold.hideAll();
+  if (isActivePairFast) {
+    activePair = null;
+    isActivePairFast = false;
+  }
+  setProxied(null, null);
+};
+
+/** #### Returns true if the active pick keeps Fast Fold's touch layout
+ * - A keyboard pick, with Fast Fold ticked and no mouse detected, shows
+ *   its line's pair among the touch layout's rather than suspending it.
+ * - Allocates nothing.
+ * @param isByKeyboard True if the pick is the keyboard's.
+ * @returns True if the touch layout stays.
+ */
+const isAmongTouchPairs = (isByKeyboard) =>
+  isByKeyboard && fastFold.isOn() && !hasMouse;
+
+/** #### Returns true if the paper shows its white side at a point on screen
+ * - Where the pair at that point takes its colours from. With no paper
+ *   there, or the paper's plane missed, the side facing the camera's.
+ * - Allocates nothing, so it is safe on every pointer move.
+ * @param x The point's x, in CSS pixels.
+ * @param y The point's y, in CSS pixels.
+ * @returns True for the white side.
+ */
+const isOverWhiteAt = (x, y) => {
+  const isFrontFacing = pick.facesFront();
+  const hit = pick.hitAt(x, y);
+  if (hit === null) return !isFrontFacing;
+
+  themePoint[0] = hit.x + restCentre[0];
+  themePoint[1] = hit.y + restCentre[1];
+  const isOnFront = showsFrontAt(restFaces, isFrontFacing, themePoint);
+
+  return !(isOnFront ?? isFrontFacing);
+};
+
+/** #### Lays out the pairs for the scene at rest, after a layout event
+ * - Projects the Fold Lines' spans to the screen, reads the toolbar's
+ *   controls, none while Escape has it hidden, measures a pair, and notes
+ *   the side facing the camera. Then lays out Fast Fold's touch layout,
+ *   unless a mouse is detected, Fast Fold is unticked or an active line
+ *   suspends it, and hides Fast Fold's pairs otherwise; the nearby layout
+ *   waits for the next mouse move. Places the active line's pair afresh.
+ * - Call it after a frame's render, which updates the camera's matrices.
+ * - Allocates, so call it only on a layout event.
+ */
+const layOut = () => {
+  screenLines = restFoldLines.map((line, index) => {
+    const segments = [];
+    let lengthPx = 0;
+    for (const { from, to } of restSpansByLine[restLines.indexOf(line)]) {
+      toScreen(from[0], from[1]);
+      const { x, y } = screenPoint;
+      toScreen(to[0], to[1]);
+      segments.push(x, y, screenPoint.x, screenPoint.y);
+      lengthPx += Math.hypot(screenPoint.x - x, screenPoint.y - y);
+    }
+
+    return { index, lengthPx, segments };
+  });
+  space.exclusions = controls.hasAttribute("data-hidden")
+    ? NONE_AT_REST
+    : [...controls.children]
+        .map((control) => control.getBoundingClientRect())
+        .filter(({ height, width }) => width > 0 && height > 0);
+  foldButtons.measure(space.pair);
+  layoutFrontFacing = pick.facesFront();
+
+  const isTouch = fastFold.isOn() && !hasMouse;
+  const isSuspended =
+    activeLine !== null && !isAmongTouchPairs(isActiveByKeyboard);
+  if (isTouch && !isSuspended) {
+    fastFold.layOutTouch(screenLines, space);
+  } else {
+    hideFastPairs();
+  }
+  if (activeLine !== null) showActivePair();
+};
+
+/** #### Lights the hovered line, or none, in the inks of the printed lines
  * - Each segment of the line takes the ink of the printed line it covers,
  *   as seen from the camera's side: black where the paper shows its front,
  *   the coloured side, and along a border between the two sides; the
@@ -473,8 +768,7 @@ const light = (line, isFrontFacing) => {
     return;
   }
 
-  const { back, front } = restSegments[restLines.indexOf(line)];
-  const segments = isFrontFacing ? front : back;
+  const segments = segmentsOf(line, isFrontFacing);
   const deeperInk = PAPER_COLOR_SHADES[chosenColorId].deeper;
   if (segments === litLineSegments && deeperInk === litDeeperInk) return;
 
@@ -485,70 +779,173 @@ const light = (line, isFrontFacing) => {
   paper.lightLine(deeperInk, restCentre, GRAPHIC_BLACK, line, segments);
 };
 
-/** #### Returns the line nearest a hit on the paper's plane, within reach
- * - Adds back the stage's centre, so the hit becomes a point of the
- *   folded plane, which the lattice's lines are in.
- * - Measures to the lines' spans that are folds, so a hit near a line
- *   where it only runs along the paper's outline, or over a gap, finds
- *   nothing there.
- * - Allocates nothing, so it is safe on every pointer move.
- * @param hit The hit, a Vector3 in metres in `stretchGroup`'s frame, or
- *   null if the pointer's ray missed the plane.
- * @returns The line whose fold span is nearest, within
- *   `PICK_DISTANCE_METERS`, or null.
+/** #### Returns a line's segments seen from one side, as litSegments() lists
+ * - Allocates nothing.
+ * @param line The line, from `restLines`.
+ * @param isFrontFacing True if the camera faces the paper's front.
+ * @returns The segments.
  */
-const nearestLine = (hit) => {
+const segmentsOf = (line, isFrontFacing) => {
+  const { back, front } = restSegments[restLines.indexOf(line)];
+
+  return isFrontFacing ? front : back;
+};
+
+/** #### Marks the canvas `data-over-line`, for the CSS's pointer cursor
+ * - Written only on change.
+ * - Allocates nothing, so it is safe on every pointer move.
+ * @param isOver True while a mouse press there would be a line's.
+ */
+const setOverLine = (isOver) => {
+  if (isOver === isOverLine) return;
+
+  isOverLine = isOver;
+  canvas.toggleAttribute("data-over-line", isOver);
+};
+
+/** #### Marks the button of a pair that the proxy stands in for, or none
+ * - Clears the mark on the pair marked before, if another.
+ * - Allocates nothing, so it is safe on every pointer move.
+ * @param pair The pair, or null for none.
+ * @param side `"mountain"` or `"valley"`, the button to mark, or null.
+ */
+const setProxied = (pair, side) => {
+  if (proxiedPair !== null && proxiedPair !== pair) {
+    proxiedPair.setProxied(null);
+  }
+  proxiedPair = pair;
+  pair?.setProxied(side);
+};
+
+/** #### Shows the active line's pair, placed for how it was picked
+ * - A keyboard pick among the touch layout's pairs emphasises its line's
+ *   pair there; a line with none placed shows its own pair over the middle
+ *   of its longest span, and the touch pairs within the gap of it fade
+ *   until the next layout.
+ * - Any other pick hides Fast Fold's pairs, suspending it, and shows Slow
+ *   Fold's pair: for the keyboard, over the middle of the line's longest
+ *   span; for a click or a tap, on the line beside `pickPoint`. A
+ *   keyboard pick's pair is emphasised.
+ * - An active Slow Fold pair is moved, not replaced, so a layout event
+ *   places it afresh where it stands.
+ * - Allocates nothing, unless the pair is a new one, and the position
+ *   strings it writes.
+ */
+const showActivePair = () => {
+  const index = restFoldLines.indexOf(activeLine);
+  const screenLine = screenLines[index];
+  const isAmongTouch = isAmongTouchPairs(isActiveByKeyboard);
+  if (!isAmongTouch) hideFastPairs();
+
+  const touchPair = isAmongTouch ? fastFold.pairOf(index) : null;
+  if (touchPair !== null) {
+    if (activePair !== null && !isActivePairFast) activePair.hide();
+    activePair = touchPair;
+    isActivePairFast = true;
+    touchPair.setEmphasised(true);
+    return;
+  }
+
+  const pair =
+    activePair !== null && !isActivePairFast
+      ? activePair
+      : foldButtons.acquire();
+  toScreen(pickPoint.x + restCentre[0], pickPoint.y + restCentre[1]);
+  if (isActiveByKeyboard) {
+    placeOnPoint(
+      screenLine,
+      pair.placement,
+      space,
+      screenPoint.x,
+      screenPoint.y,
+    );
+  } else {
+    placeBesideClick(screenLine, pair.placement, screenPoint, space);
+  }
+  if (isAmongTouch) fastFold.hideNear(pair.placement, space);
+  pair.setOverWhite(!isPickOnFront);
+  pair.setEmphasised(isActiveByKeyboard);
+  pair.show();
+  activePair = pair;
+  isActivePairFast = false;
+};
+
+/** #### Returns the line a pointer at a point would light or claim
+ * - While a line is active, its kept zone, its hitzone on the paper and
+ *   its pair's hitzone, returns that line, so nothing else lights there.
+ *   Otherwise a shown Fast Fold pair's hitzone returns its own line, which
+ *   wins over any other line's hitzone it overlaps; and otherwise the line
+ *   whose fold span is nearest on the paper, within
+ *   `PICK_DISTANCE_METERS`, or null.
+ * - Writes the point, in the folded plane, into `foldedPoint`.
+ * - Allocates nothing, so it is safe on every pointer move.
+ * @param hit The pointer's hit on the paper's plane, a Vector3 in metres
+ *   in `stretchGroup`'s frame, or null if the ray missed it, which finds
+ *   nothing.
+ * @param x The pointer's x on screen, in CSS pixels.
+ * @param y The pointer's y on screen, in CSS pixels.
+ * @returns The line, from `restFoldLines`, or null.
+ */
+const targetAt = (hit, x, y) => {
   if (hit === null) return null;
 
   foldedPoint[0] = hit.x + restCentre[0];
   foldedPoint[1] = hit.y + restCentre[1];
+  if (activeLine !== null) {
+    const isInKeptZone =
+      (activePair !== null &&
+        zoneContains(activePair.placement, space, x, y)) ||
+      pickLine(activeSpans, PICK_DISTANCE_METERS, foldedPoint) !== null;
+    if (isInKeptZone) return activeLine;
+  }
+
+  const pair = fastFold.pairAt(x, y, space);
+  if (pair !== null) return restFoldLines[pair.placement.lineIndex];
 
   return pickLine(restSpans, PICK_DISTANCE_METERS, foldedPoint)?.line ?? null;
 };
 
-/** #### Picks a line, lighting it and showing its Fold Buttons
- * - The buttons are placed above `pickPoint`, which the caller has
- *   written, after the next frame's render. Their colours follow the side
- *   of the paper showing at `foldedPoint`, the same point in the folded
- *   plane, which the caller has also written; where no paper lies there,
- *   the side facing the camera's.
- * - Allocates nothing, unless the buttons' colours change.
- * @param line The line, from `restLines`.
- * @param isFrontFacing True if the camera lies on the front's side of the
- *   paper's plane.
+/** #### Carries a point of the folded plane to the screen
+ * - Writes `screenPoint`, in CSS pixels from the viewport's top-left,
+ *   with the camera's matrices from the last render.
+ * - Allocates nothing.
+ * @param foldedX The point's x in the folded plane, in metres.
+ * @param foldedY The point's y in the folded plane, in metres.
  */
-const pick = (line, isFrontFacing) => {
-  isPickFrontFacing = isFrontFacing;
-  isPickOnFront =
-    showsFrontAt(restFaces, isFrontFacing, foldedPoint) ?? isFrontFacing;
-  isPickPlaced = false;
-  pickedLine = line;
-  light(line, isFrontFacing);
-  writePickColors();
+const toScreen = (foldedX, foldedY) => {
+  projected.set(foldedX - restCentre[0], foldedY - restCentre[1], 0);
+  paper.stretchGroup.localToWorld(projected).project(camera);
+  screenPoint.x = ((projected.x + 1) / 2) * space.viewport.width;
+  screenPoint.y = ((1 - projected.y) / 2) * space.viewport.height;
 };
 
-/** #### Writes the Fold Buttons' colours and the lit line's for the pick
- * - The buttons take the paper colour's two shades, and the theme for the
- *   side of the paper under the pick, which the CSS draws: over the
- *   coloured side, the lighter shade behind black ink; over the white
- *   side, a white behind the deeper shade.
- * - Called on a pick and on a change of colour; writes the buttons'
- *   shades only when the colour has changed since, their theme only when
- *   the side under the pick has, and the lit line's only when it shows.
+/** #### Writes the Fold Buttons' colours and the lit lines' for the colour
+ * - The buttons take the paper colour's two shades, which the CSS draws:
+ *   over the coloured side, the lighter shade behind black ink; over the
+ *   white side, a white behind the deeper shade.
+ * - Called at load and on a change of colour; writes the buttons' shades
+ *   only when the colour has changed since, and the lit lines' only when
+ *   they show.
  */
 const writePickColors = () => {
   if (litLine !== null) light(litLine, isLitFrontFacing);
-  if (pickedLine === null) return;
+  if (activeLine !== null) {
+    paper.lightActiveLine(
+      PAPER_COLOR_SHADES[chosenColorId].deeper,
+      restCentre,
+      GRAPHIC_BLACK,
+      activeLine,
+      segmentsOf(activeLine, isPickFrontFacing),
+    );
+  }
   if (buttonsColorId !== chosenColorId) {
     buttonsColorId = chosenColorId;
     const { deeper, lighter } = PAPER_COLOR_SHADES[chosenColorId];
     foldButtons.setColors(deeper, lighter);
   }
-  if (isButtonsOnFront !== isPickOnFront) {
-    isButtonsOnFront = isPickOnFront;
-    foldButtons.setOverWhite(!isPickOnFront);
-  }
 };
+
+writePickColors();
 
 /** #### Returns true if the sequence state rests at its target in Sandbox Mode
  * - At the target's `sheetId` and `position`, with no stretch or fade of
@@ -565,9 +962,12 @@ const isSequenceAtRest = () =>
 
 /** #### Finds what the paper shows where it now rests, and what can fold
  * - The faces placed at the position's stage, the lines the paper can fold
- *   along there, and each line's segments seen from each side, once per
- *   rest state, so a pointer move compares the hit with at most a few tens
- *   of lines, and lights one by lookup. Also the stage's centre.
+ *   along there, each line's segments seen from each side, and their fold
+ *   spans, once per rest state, so a pointer move compares the hit with at
+ *   most a few tens of lines, and lights one by lookup. Also the stage's
+ *   centre.
+ * - Forgets the remembered keyboard pick, whose line is gone, and marks
+ *   the layout stale.
  * - Allocates, so call it only when the paper comes to rest.
  */
 const enterRest = () => {
@@ -587,12 +987,26 @@ const enterRest = () => {
     restLines,
     restSegments.map(({ front }) => front),
   );
+  restSpansByLine = restLines.map((line) =>
+    restSpans.filter((span) => span.line === line),
+  );
   restFoldLines = restLines.filter((_line, i) => restSegments[i].front.length);
+  rememberedLine = null;
+  screenLines = NONE_AT_REST;
+  isLayoutStale = true;
 };
 
-// Escape clears the pick if there is one, and otherwise hides and shows
-// the toolbar: the hidden toolbar leaves the paper alone on screen.
-connectControlsToggle(clearPick);
+// Escape clears the active line if there is one, and forgets the keyboard
+// pick put away; otherwise it hides and shows the toolbar, which the pairs
+// are laid out afresh around: the hidden toolbar leaves the paper alone on
+// screen.
+connectControlsToggle(() => {
+  rememberedLine = null;
+  if (clearPick()) return true;
+
+  isLayoutStale = true;
+  return false;
+});
 
 /** #### Writes the spin to the paper's outermost group
  * - With the default order `XYZ`, the paper turns about its own vertical
@@ -603,56 +1017,162 @@ const writeSpin = () => {
   paper.group.rotation.set(spin.pitchRadians, spin.yawRadians, 0);
 };
 
-// A hover, with no pick standing, lights the nearest line within reach as
-// a preview, or none. A press that does not move picks the nearest line
-// within reach, at the press, or clears the pick if there is none. Left
-// and Right pick the line before or after the pick, in the lattice's
-// order, among the lines that are folds somewhere, at the middle of the
-// line's longest fold span.
-const pressAt = connectPick(
+// A hover lights the line a press there would take, as targetAt() finds
+// it, or none: nothing in the active line's kept zone. A mouse over a lit
+// line shows the pointer cursor, and with Fast Fold, runs the nearby
+// layout and marks the button the proxy stands in for. Leaving the canvas
+// for a shown pair keeps the light, which the pair's hover then sets, so
+// its line stays lit with no flicker. A press that does not move,
+// by touch or pen, makes the line it finds active, or clears the active
+// line if there is none, but leaves it in its kept zone; a mouse's never
+// picks, since a mouse press on a line is claimed. Left and Right make the
+// line before or after the active one active, in the lattice's order,
+// among the Fold Lines, at the middle of its longest fold span; Up and
+// Down press its pair's buttons. Focus leaving the canvas puts a keyboard
+// pick away, and focus returning restores it.
+const pick = connectPick(
   camera,
   canvas,
-  (step, isFrontFacing) => {
-    if (!canPick() || restFoldLines.length === 0) return;
+  {
+    keepsHover: foldButtons.holds,
+    onBlur: () => {
+      if (activeLine === null || !isActiveByKeyboard) return;
 
-    const count = restFoldLines.length;
-    const index = restFoldLines.indexOf(pickedLine);
-    let next = (index + step + count) % count;
-    if (index === -1) next = step > 0 ? 0 : count - 1;
-    writeFoldMiddle(restFoldLines[next], foldedPoint, restSpans);
-    pickPoint.set(
-      foldedPoint[0] - restCentre[0],
-      foldedPoint[1] - restCentre[1],
-      0,
-    );
-    pick(restFoldLines[next], isFrontFacing);
-  },
-  (hit, isFrontFacing) => {
-    if (pickedLine !== null || !canPick()) return;
-
-    light(nearestLine(hit), isFrontFacing);
-  },
-  (hit, isFrontFacing) => {
-    if (!canPick()) return;
-
-    const line = nearestLine(hit);
-    if (line === null) {
+      const line = activeLine;
       clearPick();
-      return;
-    }
-    pickPoint.copy(hit);
-    pick(line, isFrontFacing);
+      rememberedLine = line;
+    },
+    onCycle: (step, isFrontFacing) => {
+      if (!canPick() || restFoldLines.length === 0) return;
+
+      const count = restFoldLines.length;
+      const index = restFoldLines.indexOf(activeLine);
+      let next = (index + step + count) % count;
+      if (index === -1) next = step > 0 ? 0 : count - 1;
+      pickKeyboardLine(restFoldLines[next], isFrontFacing);
+    },
+    onFocus: () => {
+      const line = rememberedLine;
+      if (line === null || !canPick() || !restFoldLines.includes(line)) {
+        return;
+      }
+      pickKeyboardLine(line, pick.facesFront());
+    },
+    onFoldKey: (type) => {
+      if (activePair === null || !canPick()) return;
+
+      activePair.press(type);
+    },
+    onHover: (hit, isFrontFacing, x, y, pointerType) => {
+      if (!canPick()) return;
+
+      const target = targetAt(hit, x, y);
+      const line = target === activeLine ? null : target;
+      const isMouse = pointerType === "mouse";
+      light(line, isFrontFacing);
+      setOverLine(isMouse && line !== null);
+
+      const isNearby =
+        isMouse && hit !== null && activeLine === null && fastFold.isOn();
+      if (!isNearby || !hasMouse) {
+        setProxied(null, null);
+        return;
+      }
+      const index = restFoldLines.indexOf(line);
+      fastFold.layOutNearby(
+        screenLines,
+        index === -1 ? null : screenLines[index],
+        x,
+        y,
+        space,
+      );
+      const pair = index === -1 ? null : fastFold.pairOf(index);
+      setProxied(pair, pair === null ? null : sideOf(screenLines[index], x, y));
+    },
+    onPress: (hit, isFrontFacing, x, y, pointerType) => {
+      if (!canPick()) return;
+
+      const target = targetAt(hit, x, y);
+      if (target !== null && target === activeLine) return;
+      if (pointerType === "mouse" || target === null) {
+        clearPick();
+        return;
+      }
+      pickPoint.copy(hit);
+      activate(target, isFrontFacing, false);
+    },
   },
   paper.stretchGroup,
 );
 
-// A drag clears the pick as it starts, cancels a reset under way where it
-// is, and takes over at once; a double-click starts a reset from where the
-// spin is.
-connectDrag(
-  canvas,
-  (deltaXPixels, deltaYPixels) => {
+/** #### Makes a line active from the keyboard, at its longest span's middle
+ * - Allocates nothing, unless its pair is a new one.
+ * @param line The line, from `restFoldLines`.
+ * @param isFrontFacing True if the camera faces the paper's front.
+ */
+const pickKeyboardLine = (line, isFrontFacing) => {
+  writeFoldMiddle(line, foldedPoint, restSpans);
+  pickPoint.set(
+    foldedPoint[0] - restCentre[0],
+    foldedPoint[1] - restCentre[1],
+    0,
+  );
+  activate(line, isFrontFacing, true);
+};
+
+// A mouse press on a lit Fold Line, outside the active line's kept zone,
+// is the line's, decided at `pointerdown`: it never turns the paper, and
+// on release makes the line active, or, where the proxy serves it, presses
+// the button on the side it went down on. Any other press is the drag's,
+// which clears the active line and hides the pairs as it starts, cancels a
+// reset under way where it is, and takes over at once; the pairs are laid
+// out afresh once it ends. A double-click starts a reset from where the
+// spin is, hiding the pairs.
+connectDrag(canvas, {
+  claimsPress: (x, y, pointerType) => {
+    if (pointerType !== "mouse" || !canPick()) return false;
+
+    const hit = pick.hitAt(x, y);
+    const target = targetAt(hit, x, y);
+    if (target === null || target === activeLine) return false;
+
+    claimedLine = target;
+    claimPoint.copy(hit);
+    isClaimFrontFacing = pick.facesFront();
+    const index = restFoldLines.indexOf(target);
+    claimedPair =
+      activeLine === null && fastFold.isOn() && hasMouse
+        ? fastFold.pairOf(index)
+        : null;
+    if (claimedPair !== null) claimedSide = sideOf(screenLines[index], x, y);
+
+    return true;
+  },
+  onClaimedPress: () => {
+    const line = claimedLine;
+    claimedLine = null;
+    if (line === null || !canPick() || !restFoldLines.includes(line)) return;
+
+    const index = restFoldLines.indexOf(line);
+    const isServed =
+      claimedPair !== null &&
+      claimedPair.isShown() &&
+      claimedPair.placement.lineIndex === index;
+    if (isServed) {
+      claimedPair.press(claimedSide);
+      return;
+    }
+    pickPoint.copy(claimPoint);
+    foldedPoint[0] = claimPoint.x + restCentre[0];
+    foldedPoint[1] = claimPoint.y + restCentre[1];
+    activate(line, isClaimFrontFacing, false);
+    setOverLine(false);
+  },
+  onDrag: (deltaXPixels, deltaYPixels) => {
     clearPick();
+    hideFastPairs();
+    isOrbiting = true;
+    screenLines = NONE_AT_REST; // projected afresh once the drag ends
     spinReset.progress = 1;
     turnSpin(
       deltaXPixels,
@@ -663,9 +1183,16 @@ connectDrag(
     );
     writeSpin();
   },
-  pressAt,
-);
-canvas.addEventListener("dblclick", () => startSpinReset(spinReset, spin));
+  onDragEnd: () => {
+    isOrbiting = false;
+    isLayoutStale = true;
+  },
+  onPress: pick.pressAt,
+});
+canvas.addEventListener("dblclick", () => {
+  startSpinReset(spinReset, spin);
+  if (spinReset.progress < 1) hideFastPairs();
+});
 
 /** #### Writes the sequence state to the paper
  * - Swaps in the sheet `sheetId` names if it is no longer the one shown,
@@ -723,14 +1250,17 @@ renderer.setAnimationLoop((timestampMs) => {
   }
 
   // True on the step that reaches 1, so the spin ends on exactly 0. A
-  // reset moves the paper, so it clears the pick.
+  // reset moves the paper, so it clears the active line; once it ends, the
+  // pairs are laid out afresh.
   if (stepSpinReset(deltaSeconds, spinReset, spin)) {
     writeSpin();
     clearPick();
+    if (spinReset.progress >= 1) isLayoutStale = true;
   }
 
   // Coming to rest finds the lines to pick from; leaving it clears them,
-  // and the pick, before the frame draws the paper moving.
+  // the active line and every pair, before the frame draws the paper
+  // moving.
   const isNowAtRest = isSequenceAtRest();
   if (isNowAtRest !== isAtRest) {
     isAtRest = isNowAtRest;
@@ -738,11 +1268,14 @@ renderer.setAnimationLoop((timestampMs) => {
       enterRest();
     } else {
       clearPick();
+      hideFastPairs();
       restFaces = NONE_AT_REST;
       restFoldLines = NONE_AT_REST;
       restLines = NONE_AT_REST;
       restSegments = NONE_AT_REST;
       restSpans = NONE_AT_REST;
+      restSpansByLine = NONE_AT_REST;
+      screenLines = NONE_AT_REST;
     }
   }
 
@@ -752,8 +1285,8 @@ renderer.setAnimationLoop((timestampMs) => {
   renderer.render(scene, camera);
 
   // After the render, so the camera's matrices are this frame's.
-  if (pickedLine !== null && !isPickPlaced) {
-    foldButtons.showAt(pickPoint);
-    isPickPlaced = true;
+  if (isLayoutStale && canLayOut()) {
+    isLayoutStale = false;
+    layOut();
   }
 });

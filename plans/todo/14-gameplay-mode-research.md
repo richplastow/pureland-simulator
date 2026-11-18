@@ -566,14 +566,14 @@ part names its options and a recommendation, for discussion.
   With a direction choice, the two buttons of a fold centre on the
   anchor and straddle the line, each on the side it stands for, as the
   Sandbox arranges them
-  ([Plan 18, Decision 15](./18-fast-fold.md#decisions)): stacked,
+  ([Plan 18, Decision 15](../done/18-fast-fold.md#decisions)): stacked,
   mountain above, on a line within 45° of horizontal on screen, and
   side by side, valley left, on a steeper one. A one-way fold's single
   button centres on its line
-  ([Decision 18](./18-fast-fold.md#decisions)), and with a mouse both
+  ([Decision 18](../done/18-fast-fold.md#decisions)), and with a mouse both
   sides of the line can stand in for it, as each side stands in for
   its own button of a pair
-  ([Decision 17](./18-fast-fold.md#decisions)).
+  ([Decision 17](../done/18-fast-fold.md#decisions)).
 - **Alternative to anchors: the Sandbox's pointer picking**, which needs
   no anchors and no placement exceptions, but shows no button on a line
   until the pointer finds it, where the brief gives every fold line a

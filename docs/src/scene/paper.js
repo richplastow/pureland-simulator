@@ -107,11 +107,13 @@ const inkColor = new Color();
  *   sheet's centre, so the grain keeps its true size and holds still while
  *   the sheet changes shape. It lives as long as the page, so it is never
  *   disposed of.
- * - The lit line, strips that createLitLine() sets out, one per segment in
- *   the ink of the printed line beneath, sits in `stretchGroup` beside the
- *   meshes, in the posed paper's frame. It grows from nothing as a line is
- *   lit and shrinks back as it goes out, so two sets of strips take turns:
- *   while one grows on the line lit, the other shrinks on the line before.
+ * - The lit lines, strips that createLitLine() sets out, one per segment
+ *   in the ink of the printed line beneath, sit in `stretchGroup` beside
+ *   the meshes, in the posed paper's frame. Two lines can be lit at once,
+ *   the active line, which a pick holds, and the hover's; each grows from
+ *   nothing as it is lit and shrinks back as it goes out. So three sets of
+ *   strips take turns: one on the active line, one growing on the hovered
+ *   line, and one shrinking on the line lit before.
  * @param frontColor The front's colour at creation, as a hex number in
  *   sRGB.
  * @param radiusMeters The largest distance from the origin that the paper
@@ -129,8 +131,10 @@ const inkColor = new Color();
  *   setSequencePosition(), which poses the paper along its sequence of
  *   steps and turns it over; setSheet(), which swaps in another sheet's
  *   geometry, and setPrintedLines(), which redraws the printed lines for
- *   it; lightLine(), which lights a line, clearLitLine(), which puts it
- *   out, and stepLitLines(), which grows and shrinks the lit lines; and
+ *   it; lightLine(), which lights the hovered line, and clearLitLine(),
+ *   which puts it out; lightActiveLine(), which lights the active line, and
+ *   clearActiveLine(), which puts it out; stepLitLines(), which grows and
+ *   shrinks the lit lines; and
  *   `stretchGroup`, the innermost group, whose frame is the posed paper's,
  *   for picking.
  */
@@ -184,13 +188,18 @@ export const createPaper = (frontColor, radiusMeters, sheet) => {
   const backMesh = new Mesh(shown.geometry, backMaterial);
   backMesh.receiveShadow = true;
   const meshes = [frontMesh, backMesh, frontLinesMesh, backLinesMesh];
-  // The strip growing on the line lit, or resting on it, and the strip
-  // shrinking on the line before, which swap places when another line is
-  // lit.
-  let arrivingStrip = createLitLine(radiusMeters);
-  let leavingStrip = createLitLine(radiusMeters);
+  // The three sets of strips, and those lighting the active line and the
+  // hovered line, or null; a set lighting neither shrinks away. One set
+  // lights both when the hover is over the active line.
+  const strips = [
+    createLitLine(radiusMeters),
+    createLitLine(radiusMeters),
+    createLitLine(radiusMeters),
+  ];
+  let activeStrip = null;
+  let hoverStrip = null;
   const stretchGroup = new Group();
-  stretchGroup.add(...meshes, arrivingStrip.mesh, leavingStrip.mesh);
+  stretchGroup.add(...meshes, ...strips.map(({ mesh }) => mesh));
 
   // Order `ZYX` turns the sheet about its upright axis, `y`, to show its
   // side, then rolls it about the line of sight, `z`, as seen.
@@ -213,11 +222,20 @@ export const createPaper = (frontColor, radiusMeters, sheet) => {
   const fadeFromColor = new Color(frontColor);
   const fadeToColor = new Color(frontColor);
 
-  /** #### Puts the lit line out, shrinking it to nothing over the next frames
+  /** #### Puts the active line out, shrinking it over the next frames
+   * - Allocates nothing.
+   */
+  const clearActiveLine = () => {
+    activeStrip = null;
+    writeGrowing();
+  };
+
+  /** #### Puts the hovered line out, shrinking it over the next frames
    * - Allocates nothing, so it is safe on every pointer move.
    */
   const clearLitLine = () => {
-    arrivingStrip.isGrowing = false;
+    hoverStrip = null;
+    writeGrowing();
   };
 
   /** #### Fits the grain's repeat to the sheet showing and its stretch
@@ -235,18 +253,40 @@ export const createPaper = (frontColor, radiusMeters, sheet) => {
     );
   };
 
-  /** #### Lights a line as bold strips over the printed line beneath it
-   * - One strip per segment, each in the ink of the printed line it covers:
-   *   `frontInk` where the paper shows its front, whose lines are black,
-   *   or where a border between front and back runs along it; and
+  /** #### Lights the active line as bold strips over its printed line
+   * - As lightLine() lights the hovered line, on a set of strips of its
+   *   own, so the active line stays lit while the hover moves on. A line
+   *   that the hover or a shrinking set already lights keeps that set, and
+   *   grows on from where it is.
+   * - Allocates nothing.
+   * @param backInk The ink over the back's printed lines, as a hex number
+   *   in sRGB.
+   * @param centre The stage's centre, `[x, y]` in metres in the folded
+   *   plane, which the pose slides the paper by.
+   * @param frontInk The ink over the front's printed lines, likewise.
+   * @param line The line, with `from` and `to`, `[x, y]` in metres in the
+   *   folded plane.
+   * @param segments The line's segments, as litSegments() lists them for
+   *   the side the camera is on.
+   */
+  const lightActiveLine = (backInk, centre, frontInk, line, segments) => {
+    activeStrip = takeStrip(centre, hoverStrip, line, segments, strips);
+    writeGrowing();
+    writeLitColors(activeStrip, backInk, frontInk);
+  };
+
+  /** #### Lights the hovered line as bold strips over its printed line
+   * - One strip per segment, each in the ink of the printed line it
+   *   covers: `frontInk` where the paper shows its front, whose lines are
+   *   black, or where a border between front and back runs along it; and
    *   `backInk` where it shows only its back, whose lines take the paper's
    *   colour. So the printed line seems to swell, segment by segment.
    * - The strips grow from nothing over the next frames, as
    *   stepLitLines() writes them, along the line's crossing extent, in the
-   *   posed paper's frame. A line lit before shrinks away on the other
+   *   posed paper's frame. The line hovered before shrinks away on its own
    *   set of strips; the same segments lit again, perhaps in other inks,
-   *   grow back from where they are. Segments past
-   *   `LIT_LINE_MAX_SEGMENTS` are left unlit.
+   *   grow back from where they are, and the active line's set serves the
+   *   hover too. Segments past `LIT_LINE_MAX_SEGMENTS` are left unlit.
    * - The paper must be at rest, folded flat, so the line lies in the
    *   plane the strips are drawn in.
    * - Allocates nothing, so it is safe on every pointer move.
@@ -261,41 +301,31 @@ export const createPaper = (frontColor, radiusMeters, sheet) => {
    *   the side the camera is on.
    */
   const lightLine = (backInk, centre, frontInk, line, segments) => {
-    if (segments !== arrivingStrip.segments) {
-      // Strips showing the line before shrink away; strips already gone
-      // are reused at once. Segments lit again while they shrink grow back.
-      const isReturning = segments === leavingStrip.segments;
-      if (isReturning || arrivingStrip.progress > 0) {
-        const previousStrip = arrivingStrip;
-        arrivingStrip = leavingStrip;
-        leavingStrip = previousStrip;
-        leavingStrip.isGrowing = false;
-      }
-      if (!isReturning) {
-        arrivingStrip.centre = centre;
-        arrivingStrip.line = line;
-        arrivingStrip.progress = 0;
-        arrivingStrip.segments = segments;
-        arrivingStrip.mesh.geometry.setDrawRange(
-          0,
-          LIT_LINE_INDICES_PER_SEGMENT *
-            Math.min(segments.length, LIT_LINE_MAX_SEGMENTS),
-        );
-      }
-    }
-    arrivingStrip.isGrowing = true;
-    writeLitColors(arrivingStrip, backInk, frontInk);
+    hoverStrip = takeStrip(centre, activeStrip, line, segments, strips);
+    writeGrowing();
+    writeLitColors(hoverStrip, backInk, frontInk);
   };
 
-  /** #### Grows the lit line and shrinks the line before, by a frame's time
+  /** #### Grows the lit lines and shrinks the lines before, by a frame's time
    * - Writes a strip only while its width changes, so at rest it writes
    *   nothing.
    * - Allocates nothing, so it is safe on the per-frame path.
    * @param deltaSeconds The time since the last frame, in seconds.
    */
   const stepLitLines = (deltaSeconds) => {
-    stepLitStrip(deltaSeconds, arrivingStrip);
-    stepLitStrip(deltaSeconds, leavingStrip);
+    for (let i = 0; i < strips.length; i++) {
+      stepLitStrip(deltaSeconds, strips[i]);
+    }
+  };
+
+  /** #### Sets each set of strips growing if it lights a line, else shrinking
+   * - Allocates nothing.
+   */
+  const writeGrowing = () => {
+    for (let i = 0; i < strips.length; i++) {
+      const strip = strips[i];
+      strip.isGrowing = strip === activeStrip || strip === hoverStrip;
+    }
   };
 
   /** #### Mixes the front's colour, eased, from the fade's start to its end
@@ -403,10 +433,12 @@ export const createPaper = (frontColor, radiusMeters, sheet) => {
   fitGrain();
 
   return {
+    clearActiveLine,
     clearLitLine,
     fitGrain,
     group,
     leanRotation: leanGroup.rotation,
+    lightActiveLine,
     lightLine,
     setFrontColorFade,
     setLinesVisibility,
@@ -674,6 +706,47 @@ const stepLitStrip = (deltaSeconds, strip) => {
     );
   }
   strip.positionAttribute.needsUpdate = true;
+};
+
+/** #### Returns the set of strips to light a line with, set up for it
+ * - A set already on the line's segments, growing or shrinking, keeps
+ *   them, so the line grows on from where it is; it may be the other
+ *   role's set, which then lights the line for both.
+ * - Otherwise the set with the least width, other than the other role's,
+ *   is set up afresh on the line, from no width: a set already gone, if
+ *   there is one, or else the one shrinking furthest, cut short.
+ * - Allocates nothing.
+ * @param centre The stage's centre, `[x, y]` in metres in the folded
+ *   plane.
+ * @param keep The set lighting the other role's line, or null; never
+ *   set up afresh.
+ * @param line The line, with `from` and `to`, `[x, y]` in metres in the
+ *   folded plane.
+ * @param segments The line's segments, as litSegments() lists them.
+ * @param strips The three sets, as createLitLine() returns each.
+ * @returns The set.
+ */
+const takeStrip = (centre, keep, line, segments, strips) => {
+  let taken = null;
+  for (let i = 0; i < strips.length; i++) {
+    const strip = strips[i];
+    if (strip.segments === segments) return strip;
+    if (strip !== keep && (taken === null || strip.progress < taken.progress)) {
+      taken = strip;
+    }
+  }
+
+  taken.centre = centre;
+  taken.line = line;
+  taken.progress = 0;
+  taken.segments = segments;
+  taken.mesh.geometry.setDrawRange(
+    0,
+    LIT_LINE_INDICES_PER_SEGMENT *
+      Math.min(segments.length, LIT_LINE_MAX_SEGMENTS),
+  );
+
+  return taken;
 };
 
 /** #### Writes each lit segment's ink into its strip's corners

@@ -1,6 +1,8 @@
-/** #### Checks Presentation Mode's radio, then passes each mode chosen on
- * - Checks the `presentation` radio at connection, whatever the browser
- *   restored on reload, so every load starts in Presentation Mode.
+/** #### Checks Sandbox Mode's radio, then passes each mode chosen on
+ * - Checks the `sandbox` radio at connection, whatever the browser
+ *   restored on reload, so every load starts in Sandbox Mode, and shows
+ *   its group of choices. The caller starts the app in that mode itself:
+ *   no mode is passed on at connection.
  * - Shows the group of choices the mode offers and hides the other, by
  *   their `hidden` attribute: the `.designs` group in Presentation Mode
  *   and the `.patterns` group in Sandbox Mode. A `hidden` group is out of
@@ -11,7 +13,7 @@
  *   can fire both, so `onChoose` must do nothing the second time.
  * - Throws at once if a radio's `value` names no known mode, if the page
  *   has no `.designs` or `.patterns` group, or if no radio names
- *   `presentation`.
+ *   `sandbox`.
  * @param onChoose Called with the chosen mode, `"presentation"` or
  *   `"sandbox"`.
  */
@@ -45,12 +47,10 @@ export const connectModeRadios = (onChoose) => {
     radio.addEventListener("click", choose);
   }
 
-  const presentationRadio = radios.find(
-    (radio) => radio.value === "presentation",
-  );
-  if (presentationRadio === undefined) {
-    throw new Error('No mode radio: input[value="presentation"]');
+  const sandboxRadio = radios.find((radio) => radio.value === "sandbox");
+  if (sandboxRadio === undefined) {
+    throw new Error('No mode radio: input[value="sandbox"]');
   }
-  presentationRadio.checked = true;
-  showChoices("presentation");
+  sandboxRadio.checked = true;
+  showChoices("sandbox");
 };
