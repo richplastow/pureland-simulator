@@ -24,7 +24,8 @@
  * it, and Shift with Up or Down steps the active line's fold live; a
  * release or Enter snaps the angle to a whole step and makes the fold,
  * which may stand short of flat, after which nothing more folds. Undo,
- * Redo and Unfold, and their shortcuts, walk the session back and forth.
+ * Redo and Unfold, and their shortcuts, walk the session back and forth,
+ * and Export shows the folds the paper shows as a JSON design file.
  */
 
 import {
@@ -36,6 +37,7 @@ import {
   WebGLRenderer,
 } from "three";
 import { distanceToFitSphere } from "./camera/fit.js";
+import { writeDesignFile } from "./designs/design-file.js";
 import { DESIGNS } from "./designs/list.js";
 import {
   writeLean,
@@ -806,10 +808,17 @@ connectMouseDetection(() => {
   if (activeLine !== null) isLayoutStale = true;
 });
 
-// Undo, Redo and Unfold move only the target, so a step under way finishes
-// first, and repeated presses add up, each playing in turn. Each drops a
-// live fold first.
+// Export writes the folds the paper shows, or is folding to, those before
+// the target's position, never the undone tail kept for Redo, as a design
+// file of the pattern, under a new id and with no note, which a person adds
+// by hand. Undo, Redo and Unfold move only the target, so a step under way
+// finishes first, and repeated presses add up, each playing in turn. Each
+// drops a live fold first.
 const sandboxBar = connectSandboxBar(
+  () =>
+    writeDesignFile(crypto.randomUUID(), patterns[sequenceTarget.sheetId], {
+      folds: session.folds.slice(0, sequenceTarget.position),
+    }),
   () => {
     dropLive();
     sequenceTarget.position = Math.min(
@@ -1312,12 +1321,16 @@ const enterRest = () => {
   isLayoutStale = true;
 };
 
-// Escape eases a keyboard angle back to flat, then clears the active line
-// if there is one, and forgets the keyboard pick put away; otherwise it
-// hides and shows the toolbar, which the pairs are laid out afresh around:
-// the hidden toolbar leaves the paper alone on screen. During a mouse
-// drag, it leaves the drag to its release.
+// Escape, while the export dialog is open, closes the dialog alone, which
+// the browser does once the key has passed, leaving the toolbar and any
+// pick as they were. Otherwise it eases a keyboard angle back to flat, then
+// clears the active line if there is one, and forgets the keyboard pick put
+// away; failing that, it hides and shows the toolbar, which the pairs are
+// laid out afresh around: the hidden toolbar leaves the paper alone on
+// screen. During a mouse drag, it leaves the drag to its release.
 connectControlsToggle(() => {
+  if (sandboxBar.isExportOpen()) return true;
+
   easeKeyboardAngleBack();
   rememberedLine = null;
   if (clearPick()) return true;

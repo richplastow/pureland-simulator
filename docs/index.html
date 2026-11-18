@@ -66,6 +66,7 @@
         <button type="button" data-undo disabled>Undo</button>
         <button type="button" data-redo disabled>Redo</button>
         <button type="button" data-unfold disabled>Unfold</button>
+        <button type="button" data-export disabled>Export</button>
       </div>
       <div
         class="choices designs"
@@ -96,6 +97,14 @@
         <label>
           <input type="radio" name="design" value="heart" />
           Heart
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="design"
+            value="2f0a6b7e-3c1d-4e8f-9a2b-6c5d4e3f2a1b"
+          />
+          Blintz
         </label>
       </div>
       <label>
@@ -140,5 +149,16 @@
         />
       </div>
     </div>
+    <dialog class="export-dialog" aria-label="Export">
+      <label>
+        Copy this JSON, and save it as a design file in docs/src/designs/
+        to add it as a design.
+        <textarea readonly spellcheck="false"></textarea>
+      </label>
+      <form method="dialog">
+        <button type="button" data-copy>Copy</button>
+        <button type="submit">Close</button>
+      </form>
+    </dialog>
   </body>
 </html>

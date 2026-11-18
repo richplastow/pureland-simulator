@@ -1,0 +1,57 @@
+{
+  "aspect": 1,
+  "colorId": "blue",
+  "format": "pureland-design/1",
+  "id": "2f0a6b7e-3c1d-4e8f-9a2b-6c5d4e3f2a1b",
+  "note": "The blintz base: every corner to the centre.",
+  "steps": [
+    {
+      "from": [
+        "0",
+        "1/2"
+      ],
+      "halfTurns": "1",
+      "to": [
+        "1/2",
+        "0"
+      ],
+      "type": "valley"
+    },
+    {
+      "from": [
+        "0",
+        "-1/2"
+      ],
+      "halfTurns": "1",
+      "to": [
+        "-1/2",
+        "0"
+      ],
+      "type": "valley"
+    },
+    {
+      "from": [
+        "-1/2",
+        "0"
+      ],
+      "halfTurns": "1",
+      "to": [
+        "0",
+        "1/2"
+      ],
+      "type": "valley"
+    },
+    {
+      "from": [
+        "1/2",
+        "0"
+      ],
+      "halfTurns": "1",
+      "to": [
+        "0",
+        "-1/2"
+      ],
+      "type": "valley"
+    }
+  ]
+}

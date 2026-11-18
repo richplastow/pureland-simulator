@@ -29,7 +29,7 @@ and links point at the plans as they stood when the brief was written.
 | [Q6](#q6) | A: an unplaced line shows its own pair; neighbours fade | [Plan 18, Decision 14](../done/18-fast-fold.md#decisions) |
 | [Q7](#q7) | A: finished means the design's own stacking | [Plan 14](./14-gameplay-mode-research.md#results) |
 | [Q8](#q8) | Own answer: a touch drag always orbits; then B, a 10 px touch allowance | [Plan 18, Decision 1](../done/18-fast-fold.md#decisions) |
-| [Q9](#q9) | Own answer: side sets direction, distance sets angle; then B, snap on release | [Plan 19, Decisions 1 and 2](../done/19-fold-angle.md#decisions), [Plan 20](./20-export-design.md) |
+| [Q9](#q9) | Own answer: side sets direction, distance sets angle; then B, snap on release | [Plan 19, Decisions 1 and 2](../done/19-fold-angle.md#decisions), [Plan 20](../done/20-export-design.md) |
 | [Q10](#q10) | C: a mouse drag previews, then settles at the design's angle | [Plan 14](./14-gameplay-mode-research.md#fold-buttons) |
 | [Q11](#q11) | A: each fold named in the design data, announced on pick | [Plan 14](./14-gameplay-mode-research.md#7-the-toolbar) |
 | [Q12](#q12) | A: reported like any other dead end; better designs expected | [Plan 14](./14-gameplay-mode-research.md#6-the-game-layer) |

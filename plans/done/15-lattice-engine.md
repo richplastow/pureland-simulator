@@ -14,7 +14,7 @@ type: plan
   pattern as data, the lattice lines that paper crosses at a state,
   oriented so the smaller side moves, and a session's folds cut into a
   sheet, with fold ends exact enough for
-  [Plan 20](../todo/20-export-design.md)'s JSON design file to write as
+  [Plan 20](./20-export-design.md)'s JSON design file to write as
   fractions.
 - Nothing visible changes: Presentation Mode renders exactly as at
   `9b63c96`, which the Agent QA proves by hashing every design's cut
@@ -102,7 +102,7 @@ type: plan
      under its own reflections, so the ends lie on lattice points, or
      at a cell's centre where a line of one diagonal family meets an
      edge on the other: each coordinate is a whole multiple of half the
-     spacing, which is why [Plan 20](../todo/20-export-design.md) can write
+     spacing, which is why [Plan 20](./20-export-design.md) can write
      them as exact fractions.
    - The engine exports its two tolerances, `TOLERANCE_METERS` and
      `MIN_AREA_SQUARE_METERS`, as they are, so the lattice judges a

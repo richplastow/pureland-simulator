@@ -817,7 +817,7 @@ both the folding and the drag to an angle.
    the drag, its ring snapping to 15°, a finishing fold left standing,
    and the keyboard and tap alternatives. Visible proof: a corner stood
    at 90°.
-6. [Plan 20, Export a Sandbox session as a JSON design](./20-export-design.md):
+6. [Plan 20, Export a Sandbox session as a JSON design](../done/20-export-design.md):
    the JSON design format, its reader and writer, the Export dialog,
    and the blintz round-tripped into a radio. Visible proof: a design
    folded in the Sandbox plays in Presentation Mode.

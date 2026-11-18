@@ -8,7 +8,7 @@ type: plan
 
 - The last of the five Basic Sandbox Mode plans, on
   [Plan 19](../done/19-fold-angle.md)'s standing folds and
-  [Plan 20](./20-export-design.md)'s export, which records every angle
+  [Plan 20](../done/20-export-design.md)'s export, which records every angle
   already. It delivers the research's ruling in
   [Angles](./13-sandbox-mode-research.md#7-angles-several-standing-folds-a-stepping-stone-to-the-fold-tree):
   several standing folds, each left standing by every later fold, with

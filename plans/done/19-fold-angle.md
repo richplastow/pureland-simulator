@@ -9,7 +9,7 @@ type: plan
 - The fourth of the five Basic Sandbox Mode plans, on
   [Plan 17](./17-sandbox-folds.md)'s Fold Buttons and
   [Plan 18](./18-fast-fold.md)'s claimed press and keyboard, and
-  before [Plan 20](../todo/20-export-design.md), which writes the angle into
+  before [Plan 20](./20-export-design.md), which writes the angle into
   the export. It delivers the drag the research's ruling put in the
   first folding plan: a click folds flat, and a drag chooses an angle,
   snapping to 15° on release.

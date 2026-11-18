@@ -18,6 +18,13 @@
   --controls-fade-duration: 0.3s;
   --controls-gap: 0.5rem; /* between neighbouring controls, and swatches */
   --controls-offset: 1.5rem; /* from the viewport's bottom edge */
+  /* the export dialog's widest, and its least gap to the viewport's sides */
+  --export-dialog-max-width: 36rem;
+  --export-dialog-margin: 1rem;
+  --export-dialog-padding: 1rem; /* between its border and its contents */
+  /* the export text box's height: about 20 lines, or less on a short
+     screen, where the JSON scrolls within it */
+  --export-text-height: min(24rem, 50dvh);
   /* a pressed Fold Button's bump, out to its peak and back */
   --fold-button-bump-duration: 0.2s;
   /* the pressed pair's stay on screen after the bump, before it fades */
@@ -366,8 +373,9 @@ body {
 
 /*
  * The sandbox bar, shown in Sandbox Mode alone, after the pattern choices:
- * Undo, Redo and Unfold, drawn as the choices are. Its `hidden` attribute
- * needs this rule, as `.choices[hidden]` does.
+ * Undo, Redo, Unfold and Export, drawn as the choices are, as are the
+ * export dialog's buttons. Its `hidden` attribute needs this rule, as
+ * `.choices[hidden]` does.
  */
 .sandbox-bar {
   display: flex;
@@ -378,7 +386,8 @@ body {
   display: none;
 }
 
-.sandbox-bar button {
+.sandbox-bar button,
+.export-dialog button {
   padding: var(--choice-padding);
   border: var(--choice-border-width) solid CanvasText;
   border-radius: var(--choice-radius);
@@ -389,7 +398,8 @@ body {
   transition: background-color var(--choice-hover-duration);
 }
 
-.sandbox-bar button:hover:enabled {
+.sandbox-bar button:hover:enabled,
+.export-dialog button:hover:enabled {
   background-color: var(--choice-hover-color);
 }
 
@@ -398,6 +408,50 @@ body {
   border-color: GrayText;
   color: GrayText;
   cursor: default;
+}
+
+/*
+ * The export dialog, made modal by src/ui/sandbox-bar.js, a child of the
+ * page's body, so the toolbar's fade and pointer rules never reach it. It
+ * fits the viewport at any width: its text box fills its width, and the
+ * JSON scrolls within the box. Laid out only while `[open]`, as a `display`
+ * on the dialog itself would override the browser's own hiding of a closed
+ * one.
+ */
+.export-dialog {
+  box-sizing: border-box;
+  width: min(
+    var(--export-dialog-max-width),
+    100% - 2 * var(--export-dialog-margin)
+  );
+  max-width: none;
+  padding: var(--export-dialog-padding);
+  border: var(--choice-border-width) solid CanvasText;
+  border-radius: var(--choice-radius);
+  background-color: Canvas;
+  color: CanvasText;
+}
+
+.export-dialog[open],
+.export-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--controls-gap);
+}
+
+.export-dialog textarea {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--export-text-height);
+  font-family: ui-monospace, monospace;
+  resize: none;
+}
+
+/* Copy and Close sit side by side, at the dialog's end. */
+.export-dialog form {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--controls-gap);
 }
 
 /*
