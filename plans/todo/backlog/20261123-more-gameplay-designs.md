@@ -31,7 +31,13 @@ its states, traps and dead ends in milliseconds, as
 [Plan 22](../../done/22-gameplay-graph.md) measures the first four. A good
 maze, by the paper dart's example, has five to eight folds, traps at
 several states, and every trap's nearest dead end within two further
-folds, so a mistake is felt while it can still be remembered.
+folds, so a mistake is felt while it can still be remembered. Its
+graph's `radiusMeters` is judged too, against the 0.1189 m the page's
+camera frames today: `paperRadiusMeters` takes the largest of every
+offered graph's reach
+([Plan 23, Decision 5](../23-gameplay-mode.md#decisions)), so a maze
+that reaches further pulls the camera back, and the paper looks
+smaller, in every mode.
 
 The untried candidates are the simple-fold designs of the
 [design research's shortlist](../../done/07-design-research.md#the-shortlist):
@@ -50,7 +56,9 @@ the research left open.
   which would turn both into puzzles without a new design.
 - **Bring the pencil back with a kinder report**, saying at its dead
   end how far back the wrong turn was, which the research
-  [considered and set aside](../14-gameplay-mode-briefs.md#q12).
+  [considered and set aside](../14-gameplay-mode-briefs.md#q12). Its
+  maze reaches 0.1211 m, against its own folding's 0.1188 m (measured
+  2026-11-23), so it would pull the camera back about 2%.
 - **Invent designs for the maze**, rather than adapt traditional ones:
   free of a source's limits, but each needs a model worth finishing.
 
@@ -66,3 +74,6 @@ the research left open.
   where the agent, asked by the Lead Developer to choose between
   cutting weak designs and finding better ones, cut the pencil and the
   heart for the first version.
+- **2026-11-23T14:19:04Z** — **updated**: the Lead Developer ruled, through
+  `/feed-me`, that a candidate’s reach is judged against the camera’s
+  0.1189 m, and noted the pencil’s 0.1211 m.

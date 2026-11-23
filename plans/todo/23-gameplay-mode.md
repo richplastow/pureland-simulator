@@ -30,6 +30,12 @@ type: plan
 - Needed because nothing on the page yet knows Gameplay Mode, and a
   design's sheet in Presentation Mode cannot stand in for its flat
   gameplay sheet: the stepper tells sheets apart by id.
+- It first gives a fold the rules refuse its own error, so
+  buildGraph(), which runs at load from this plan on, tells a refused
+  fold from a fault (Decision 11). That replaces the RangeError
+  [Plan 22's Decision 2](../done/22-gameplay-graph.md#decisions) gives
+  a `{ movedBy }` naming a fold not yet made, so Plan 22's Step 1
+  Agent QA 4 no longer prints what it expects on its second line.
 - Browser behaviour it rests on: the
   [`hidden`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/hidden)
   attribute, as the pattern group uses it. It names no new Three.js
@@ -127,6 +133,26 @@ type: plan
    ([Plan 16, Decision 8](../done/16-sandbox-mode.md#decisions)).
 10. **The canvas's label stands**: "folds into designs or along a
     printed grid" covers Gameplay Mode too.
+11. **A fold the rules refuse throws a FoldRefusal**, a subclass of
+    Error that `docs/src/fold/engine.js` exports, whose `name` is
+    `"FoldRefusal"`, so buildGraph() catches a refusal and nothing
+    else.
+    - The engine throws it where a fold moves nothing, where a fold
+      moves the faces of one that stops short, and where a design
+      leaves a T-junction. cutPath() throws it where a `{ movedBy }`
+      names a fold not yet made.
+    - A fold index repeated, unknown or not a whole number stays a
+      RangeError, and every other throw in the engine stays a plain
+      Error: each is a fault in the caller or the design, not a
+      refusal.
+    - cutIfAllowed() in `docs/src/gameplay/graph.js` returns null for
+      a FoldRefusal only, and throws every other error on, a plain
+      Error or a native RangeError, such as a stack overflow, included.
+    - No figure changes: all six designs' graphs keep every figure in
+      [Plan 22's Decision 1](../done/22-gameplay-graph.md#decisions)
+      table, and the search over them meets only two of the refusals,
+      a fold that moves nothing and a `{ movedBy }` not yet made
+      (measured 2026-11-23 against a prototype).
 
 The target the paper rests at when the page loads:
 
@@ -140,7 +166,39 @@ The target the paper rests at when the page loads:
 
 ## Steps
 
-### Step 1: The gameplay sheets and the graphs, at load
+### Step 1: A refused fold throws its own error
+
+- Changes `docs/src/fold/engine.js` (FoldRefusal, thrown at its three
+  refusals), `docs/src/gameplay/path.js` (the `{ movedBy }` refusal)
+  and `docs/src/gameplay/graph.js` (cutIfAllowed() and its doc
+  comment), per Decision 11. Nothing the page shows changes.
+- It should throw a FoldRefusal for a fold the rules refuse, and keep
+  a RangeError for a bad fold index (Agent QA 1).
+- It should let buildGraph() catch a FoldRefusal and nothing else,
+  and find all six designs' graphs as before (Agent QA 2, 3).
+
+**Agent QA**
+
+1. Do: `node --input-type=module -e 'import { DESIGNS } from "./docs/src/designs/list.js"; import { createFold } from "./docs/src/designs/steps.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { cutPath } from "./docs/src/gameplay/path.js"; const sheet = cutSheet(DESIGNS.find((d) => d.id === "paper-dart")); const tries = [() => cutPath(sheet, [5, 4], false), () => cutPath(sheet, [0, 0], false), () => cutPath(sheet, [7], false), () => cutSheet({ aspect: 1, id: "off", steps: [createFold([-0.2, -0.075], "all", [-0.2, 0.075], "valley")] })]; console.log(tries.map((t) => { try { t(); return "none"; } catch (e) { return e.name + (e instanceof Error ? "" : "!"); } }).join(" "));'`
+   Expect: `FoldRefusal RangeError RangeError FoldRefusal` (the dart's
+   left wing before its centre fold; a fold repeated; a fold the dart
+   lacks; and a fold whose line lies off the sheet, so moves nothing)
+2. Do: `grep -c "instanceof FoldRefusal" docs/src/gameplay/graph.js; grep -c "constructor === Error\|instanceof RangeError" docs/src/gameplay/graph.js`
+   Expect: `1`, then `0`
+3. Do: `node --input-type=module -e 'import { DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; for (const design of DESIGNS) { const g = buildGraph(cutSheet(design)); const n = g.nodes; const count = (id) => (id === g.goalNodeId ? 1 : 0) + n[id].edges.reduce((sum, e) => sum + count(e.nodeId), 0); console.log(g.designId.slice(0, 10), g.foldCount, n.length, n.reduce((sum, { edges }) => sum + edges.length, 0), n.filter(({ isLive }) => isLive).length, n.filter(({ edges, id }) => edges.length === 0 && id !== g.goalNodeId).length, n.filter(({ isLive }) => isLive).flatMap(({ edges }) => edges).filter(({ nodeId }) => !n[nodeId].isLive).length, count(0), g.goalNodeId, g.radiusMeters.toFixed(4)); }'`
+   Expect: six lines, each a design's id cut to ten characters, then
+   its folds, states, edges, live states, dead ends, traps, orders,
+   goal node and reach in metres:
+   `pencil 6 161 192 9 39 9 4 121 0.1211`,
+   `mount-fuji 4 15 17 7 3 2 4 11 0.1090`,
+   `yacht 3 4 3 4 0 0 1 3 0.1069`,
+   `paper-dart 7 86 103 13 29 23 12 83 0.1124`,
+   `heart 11 65 145 65 0 0 2268 64 0.1189` and
+   `2f0a6b7e-3 4 16 32 16 0 0 24 15 0.1061`
+4. Do: `for f in docs/src/fold/engine.js docs/src/gameplay/path.js docs/src/gameplay/graph.js; do node --check "$f"; done; awk 'length > 80 { print FILENAME ":" FNR }' docs/src/fold/engine.js docs/src/gameplay/path.js docs/src/gameplay/graph.js`
+   Expect: prints nothing.
+
+### Step 2: The gameplay sheets and the graphs, at load
 
 - Changes `docs/src/gameplay/path.js` (gameplaySheetId()) and
   `docs/src/main.js` (the four flat gameplay sheets in `sheets`, the
@@ -172,7 +230,7 @@ The target the paper rests at when the page loads:
 4. Do: `node --check docs/src/gameplay/path.js && node --check docs/src/main.js; awk 'length > 80 { print FILENAME ":" FNR }' docs/src/gameplay/path.js docs/src/main.js`
    Expect: prints nothing.
 
-### Step 2: The mode and the Gameplay designs in the toolbar
+### Step 3: The mode and the Gameplay designs in the toolbar
 
 - Changes `docs/index.html` (the `gameplay` mode radio, the
   `.gameplay-designs` group, the pattern group and the sandbox bar
@@ -327,3 +385,10 @@ yet, and no status, lives or Hint show: those arrive with Plans 24 and
   the radios' order and labels (Decisions 1 and 3), the `gameplay:`
   sheet id (Decision 4), and one `mode` value in place of `isSandbox`
   (Decision 8).
+- **2026-11-23T14:22:05Z** — **updated**: the Lead Developer ruled, through
+  `/feed-me`, that a refused fold throws its own error, so the graphs
+  built at load tell a refusal from a fault: Decision 11 and a new
+  Step 1 added, the steps after it renumbered. Every Agent QA
+  expectation in Step 1 was measured against a throwaway prototype of
+  the change; the agent proposed the name FoldRefusal and which throws
+  count as refusals.

@@ -52,6 +52,14 @@ type: plan
 - Needed because Plan 23's sheets cannot be folded, and a design's
   folds, with layers, angles and an order to discover, are not the
   lattice folds the Sandbox's code makes.
+- One glitch is accepted, on paths already lost. Ten of the dart's
+  graph edges, each a wing folded after the centre fold came too early
+  and a right-hand corner or edge then wrapped a flap over the front,
+  carry the wing 2.7 to 8.9 mm through that flap for about a fifth of
+  the fold (measured 2026-11-23). Real paper bends a little to let two
+  parts pass, so the press stays available and folds as the engine
+  poses it. Refusing those folds instead is a
+  [backlog item](./backlog/20261123-doomed-dart-wing-clash.md).
 - Browser behaviour it rests on: the
   [`status` role](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/status_role),
   a polite live region, which
@@ -514,3 +522,6 @@ step 2.
   released on its line counting as a click (Decision 6); a tap on a
   line making it active, never folding (Decision 8); Enter, Up and Down
   (Decision 9); and the status line's wording and place (Decision 13).
+- **2026-11-23T14:39:08Z** — **updated**: the Lead Developer accepted, through
+  `/feed-me`, the wing that passes through a flap on ten lost dart
+  paths; noted in the Context, with a backlog item for the fix.
