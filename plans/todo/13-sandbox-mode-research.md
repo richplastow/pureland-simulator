@@ -723,8 +723,9 @@ part names its options and a recommendation, for discussion.
   Sandbox Mode allows several standing folds, mixed with flat ones. A
   fold, flat or standing, is allowed if every standing flap's hinge lies
   on its held side, so that it neither moves nor splits a standing flap,
-  and if its turn sweeps into no standing flap. A flat fold moves the side
-  holding no hinge, and a standing fold the smaller side (see
+  and if its turn sweeps into no standing flap. Every fold, flat or
+  standing, moves the smaller side, as on the flat sheet, so a line
+  whose smaller side holds a hinge cannot fold (see
   [Which side moves](#2-which-side-moves)). The engine change is moderate:
   "all layers" leaves standing faces out, so they stay with their hinge;
   the refusal of a fold that moves them stays; and a 3D sweep test is
@@ -821,7 +822,7 @@ both the folding and the drag to an angle.
    the JSON design format, its reader and writer, the Export dialog,
    and the blintz round-tripped into a radio. Visible proof: a design
    folded in the Sandbox plays in Presentation Mode.
-7. [Plan 21, Several standing folds](./21-standing-folds.md): standing
+7. [Plan 21, Several standing folds](../done/21-standing-folds.md): standing
    faces left out of "all layers", the hinge rule, the side rule once a
    flap stands, the 3D sweep test, and the limits shown by the Fold
    Buttons and the ring. Visible proof: two walls, and a fold that
@@ -1084,7 +1085,16 @@ fold always raising the smaller side.
 
 **Recommended**: C, which kept B's gains and the reach.
 
-**Answer**: C.
+**Answer**: A, the smaller side always moves. C was the first answer,
+but Plan 21's review measured what this research had not: after a
+wall, a flat fold moving the larger side swings up to 0.2174 m from
+the centre part-way through, and leans as far at rest where a wall
+stops it, 83% beyond the camera's sphere. With the smaller side
+always moving, the squares stay inside the sphere, and the oblongs
+stay within today's Sandbox reach part-way through a fold and up to
+20% beyond the sphere at rest in about 3% of sessions. The cost is
+fewer folds after a wall, and wall stops become rare, 0.03 to 0.10
+per state.
 
 ### Q10. Lines in Presentation Mode
 
@@ -1181,3 +1191,13 @@ everywhere. C: hold until Gameplay Mode's question is ruled.
   and 18; the line-id bullet reworded, since lattice lines are never saved.
 - **2026-11-18T10:51:54Z** — **ruled**: the ghost dropped, since Plan 19's
   paper folds live during the drag; by the Lead Developer.
+- **2026-11-18T20:38:01Z** — **ruled**: Q9's answer gains one exception,
+  a fold a wall stops may lean the larger side against it, while a free
+  fold short of flat on a larger-side line folds flat; by the Lead
+  Developer, from Plan 21's review, which found almost every wall stop
+  on a larger-side line. Section 7 and Q9 say so.
+- **2026-11-18T21:07:24Z** — **ruled**: Q9's answer changed from C to A, the smaller
+  side always moves, standing flap or not, superseding the exception
+  ruled at 20:38; by the Lead Developer, from measurements over a
+  throwaway build of Plan 21 on the real engine. Section 7 and Q9 say
+  so.

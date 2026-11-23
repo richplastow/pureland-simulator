@@ -1,7 +1,8 @@
 /**
  * @fileoverview
  * The lattice lines a pattern prints, and those paper crosses at a state,
- * each oriented so the smaller side moves.
+ * each oriented so the smaller side moves, holding every standing flap's
+ * hinge.
  */
 
 import { sheetSize } from "../designs/sheet.js";
@@ -64,6 +65,11 @@ const FAMILY_ORDER = Object.freeze(["v", "h", "d", "a"]);
  *   line included, oriented so the side to the line's left, which moves,
  *   is the smaller. Areas within `MIN_AREA_SQUARE_METERS` of each other
  *   tie, and take the family's direction: +y for `"v"`, +x for the others.
+ * - The hinge rule: a line is foldable only if every hinge point lies
+ *   strictly on its held side, the right, by more than `TOLERANCE_METERS`,
+ *   so its fold neither moves a standing flap nor creases across one. A
+ *   tie that fails it in the family's direction takes the other, if that
+ *   holds every hinge; any other line that fails it is left out.
  * - Lines come in order of `index`, lowest first, then of family: `"v"`,
  *   `"h"`, `"d"`, `"a"`.
  * - Allocates, so it is not for the per-frame path.
@@ -71,11 +77,15 @@ const FAMILY_ORDER = Object.freeze(["v", "h", "d", "a"]);
  * @param pattern The pattern, from `PATTERNS`: `aspect`, `diagonals` and
  *   `spacingFraction`.
  * @param polygons The faces' polygons in the folded plane, `[x, y]` in
- *   metres, as placedPolygons() returns them.
+ *   metres, as placedPolygons() returns them: the flat faces alone, once a
+ *   flap stands.
+ * @param hinges Optional: the standing flaps' hinge points, `[x, y]` in
+ *   metres in the folded plane, as hingePoints() in standing.js lists
+ *   them; none by default.
  * @returns The lines, each frozen: `family`; `from` and `to`, `[x, y]` in
  *   metres, frozen; and `index`.
  */
-export const foldableLines = (pattern, polygons) => {
+export const foldableLines = (pattern, polygons, hinges = []) => {
   const spacing = spacingOf(pattern);
   const families = pattern.diagonals ? FAMILY_ORDER : ["v", "h"];
   const lines = [];
@@ -95,7 +105,7 @@ export const foldableLines = (pattern, polygons) => {
     const first = Math.ceil((min - TOLERANCE_METERS) / spacing) || 0;
     const last = Math.floor((max + TOLERANCE_METERS) / spacing);
     for (let index = first; index <= last; index++) {
-      const line = crossingLine(family, index, polygons, spacing);
+      const line = crossingLine(family, hinges, index, polygons, spacing);
       if (line !== null) lines.push(line);
     }
   }
@@ -150,14 +160,15 @@ const clippedArea = (polygon, sides, keep) => {
 };
 
 /** #### Returns one lattice line as foldable, or null if paper is not on
- * both sides of it
+ * both sides of it, or it fails the hinge rule
  * @param family `"a"`, `"d"`, `"h"` or `"v"`.
+ * @param hinges The standing flaps' hinge points, `[x, y]` in metres.
  * @param index The line's whole number `k`, its offset `k` × spacing.
  * @param polygons The faces' polygons in the folded plane.
  * @param spacing The lattice spacing, in metres.
  * @returns The line, frozen, as foldableLines() lists it, or null.
  */
-const crossingLine = (family, index, polygons, spacing) => {
+const crossingLine = (family, hinges, index, polygons, spacing) => {
   const { along, at, side } = FAMILY_LINES[family];
   const c = index * spacing;
   let leftArea = 0;
@@ -181,10 +192,17 @@ const crossingLine = (family, index, polygons, spacing) => {
   }
 
   // The family's direction puts the line's left side to move, unless that
-  // side is the larger by more than a sliver.
+  // side is the larger by more than a sliver. A tie may turn to hold every
+  // hinge; a hinge on the side that moves, or on the line, rules it out.
+  const isTie = Math.abs(leftArea - rightArea) <= MIN_AREA_SQUARE_METERS;
+  let isReversed = leftArea - rightArea > MIN_AREA_SQUARE_METERS;
+  if (!holdsHinges(c, hinges, isReversed, side)) {
+    if (!isTie || !holdsHinges(c, hinges, !isReversed, side)) return null;
+
+    isReversed = !isReversed;
+  }
   const start = Object.freeze(at(c, minAlong));
   const end = Object.freeze(at(c, maxAlong));
-  const isReversed = leftArea - rightArea > MIN_AREA_SQUARE_METERS;
 
   return Object.freeze({
     family,
@@ -192,6 +210,22 @@ const crossingLine = (family, index, polygons, spacing) => {
     index,
     to: isReversed ? start : end,
   });
+};
+
+/** #### Returns true if every hinge point lies strictly on a line's held side
+ * - The held side is the right of the line's orientation: the family's
+ *   right, or its left if reversed. A point within `TOLERANCE_METERS` of
+ *   the line is not held.
+ * @param c The line's offset, in metres.
+ * @param hinges The hinge points, `[x, y]` in metres.
+ * @param isReversed True if the line runs against its family's direction.
+ * @param side The family's signed distance, as `FAMILY_LINES` gives it.
+ * @returns True if every hinge is held; true if there are none.
+ */
+const holdsHinges = (c, hinges, isReversed, side) => {
+  const held = isReversed ? 1 : -1; // the sign of a held point's side
+
+  return hinges.every(([x, y]) => held * side(x, y, c) > TOLERANCE_METERS);
 };
 
 /** #### Returns a pattern's lattice spacing

@@ -8,7 +8,7 @@ type: plan
 
 - The last of the five Basic Sandbox Mode plans but one, on
   [Plan 19](./19-fold-angle.md), whose angles it writes out, and before
-  [Plan 21](../todo/21-standing-folds.md). It delivers the research's
+  [Plan 21](./21-standing-folds.md). It delivers the research's
   [export as a design](../todo/13-sandbox-mode-research.md#6-export-as-a-design)
   under its ruling: a JSON design file, carrying named fractions and
   notes, loaded back by a JSON module import and a small converter.

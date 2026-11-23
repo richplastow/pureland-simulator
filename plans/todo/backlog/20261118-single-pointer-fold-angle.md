@@ -14,7 +14,7 @@ works on a touch screen, where a drag from a line always turns the
 paper ([Plan 18, Decision 1](../../done/18-fast-fold.md#decisions)), nor
 for anyone whose pointer can click but not drag, such as a head pointer
 or a hand with a tremor. They can fold flat, but never to an angle, so
-the standing folds of [Plan 21](../21-standing-folds.md) are out of
+the standing folds of [Plan 21](../../done/21-standing-folds.md) are out of
 their reach too.
 
 [WCAG 2.2, Dragging Movements](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html)

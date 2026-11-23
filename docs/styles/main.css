@@ -213,6 +213,15 @@ body {
   transition: scale var(--fold-button-hover-duration);
 }
 
+/*
+ * A button whose direction its line cannot fold, hidden by its `hidden`
+ * attribute, which the `display: grid` above would otherwise override, as
+ * with `.fold-buttons[hidden]`. Its pair shows the other button alone.
+ */
+.fold-buttons button[hidden] {
+  display: none;
+}
+
 /* Over the white side, a white behind the deeper shade. */
 .fold-buttons[data-over-white] button {
   background-color: white;

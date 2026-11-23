@@ -25,7 +25,9 @@ export const TOLERANCE_METERS = 1e-9;
  * - Each fold splits the faces it selects along its line, reflects the
  *   pieces to the line's left across it, and stacks them, in reverse
  *   order, above every face for a valley or below every face for a
- *   mountain.
+ *   mountain. A fold through `"all"` layers leaves out every face that an
+ *   earlier fold stopping short of 180° moved, so a standing flap stays
+ *   with its hinge.
  * - Each face holds its `polygon` in sheet coordinates, anticlockwise from
  *   the front, in metres; `movedBy`, the indices in `folds` of the folds
  *   that moved it; and, per stage from 0 (flat) to the fold count, its
@@ -37,7 +39,8 @@ export const TOLERANCE_METERS = 1e-9;
  *   sees them in the starting pose, turned back into the folded plane, so
  *   the paper can slide to stay centred on screen. A fold that turns both
  *   sides, or stops short of 180°, keeps the centre it starts with, so its
- *   stage repeats the one before.
+ *   stage repeats the one before. At a later stage, a face such a fold
+ *   stood counts by its shadow, as stageCentres() sets out.
  * - Each bridge is a quad of vertex indices, `[a0, a1, b0, b1]`, joining
  *   an edge that two faces share, where `a0` and `b0` are the same sheet
  *   point. Vertices are counted face by face, around each polygon.
@@ -57,8 +60,8 @@ export const TOLERANCE_METERS = 1e-9;
  *   any fold runs, when a step's `kind` is unknown and when a fold's
  *   `layers` name a step that is not a fold; and, as the folds run, when a
  *   fold moves nothing and when a fold that stops short of 180° is
- *   followed by a fold that moves its faces. Throws, naming the design,
- *   when the final faces leave a T-junction.
+ *   followed by a fold whose explicit `layers` move its faces. Throws,
+ *   naming the design, when the final faces leave a T-junction.
  * - Pure maths, with no DOM or GPU access.
  * @param design The design: `aspect`; `id`; an optional `leanRadians`,
  *   as leanOf() reads it, which cuts nothing; an optional `start`, its
@@ -219,6 +222,26 @@ export const signedArea = (polygon) =>
     return sum + x * nextY - nextX * y;
   }, 0) / 2;
 
+/** #### Returns the fold that left a face standing at a stage, if any
+ * - The fold before the stage, stopping short of 180°, that moved the
+ *   face. Nothing moves a face after such a fold, so there is at most one.
+ * - Allocates nothing, so it is safe on the per-frame path.
+ * - Pure maths, with no DOM or GPU access.
+ * @param folds The sheet's folds.
+ * @param movedBy The face's `movedBy`, the indices in `folds` of the folds
+ *   that moved it.
+ * @param stage The stage, from 0 (flat) to the fold count.
+ * @returns The fold's index in `folds`, or −1 if the face lies flat.
+ */
+export const standingFoldOf = (folds, movedBy, stage) => {
+  for (let m = 0; m < movedBy.length; m++) {
+    const j = movedBy[m];
+    if (j < stage && stopsShort(folds[j])) return j;
+  }
+
+  return -1;
+};
+
 /** #### Returns true if a fold stops short of 180°, so is never pressed flat
  * @param fold One of a design's folds.
  * @returns True if the fold's `targetRadians` is under π.
@@ -254,7 +277,7 @@ const applyFold = (faces, foldIndex, sequence) => {
   const moving = [];
   for (const face of faces) {
     const placement = face.placements.at(-1);
-    if (!selectsFace(fold.layers, face)) {
+    if (!selectsFace(fold.layers, face, folds, foldIndex)) {
       held.push(face);
       continue;
     }
@@ -572,19 +595,50 @@ const samePoint = (first, second) =>
   Math.hypot(first[0] - second[0], first[1] - second[1]) < TOLERANCE_METERS;
 
 /** #### Returns true if a fold's layer selection takes in a face
+ * - `"all"` takes every face but one that an earlier fold stopping short
+ *   of 180° moved, so a standing flap stays with its hinge. An explicit
+ *   selection takes such a face, for applyFold() to refuse.
  * - Throws on a selection it does not know.
  * @param layers `"all"`, `{ heldBy }` or `{ movedBy }`.
  * @param face The face, with `movedBy`.
+ * @param folds The design's folds, in the front's terms.
+ * @param foldIndex The selecting fold's index in `folds`.
  * @returns True if the fold takes part in moving the face.
  */
-const selectsFace = (layers, face) => {
-  if (layers === "all") return true;
+const selectsFace = (layers, face, folds, foldIndex) => {
+  if (layers === "all") {
+    return standingFoldOf(folds, face.movedBy, foldIndex) === -1;
+  }
   if (layers.movedBy !== undefined) {
     return face.movedBy.includes(layers.movedBy);
   }
   if (layers.heldBy !== undefined) return !face.movedBy.includes(layers.heldBy);
 
   throw new Error(`Unknown layer selection: ${JSON.stringify(layers)}`);
+};
+
+/** #### Returns where a point of a standing flap casts its shadow
+ * - The point as it lay before its fold, pulled towards its foot on the
+ *   fold's line by the cosine of the fold's angle, the same for a valley
+ *   and a mountain: under 90° the shadow stays on the flap's own side of
+ *   the line; past 90° it falls across it, over the folded placement,
+ *   which it meets at 180°.
+ * @param fold The fold that stood the flap, which stops short of 180°.
+ * @param point The point as it lay before that fold, `[x, y]` in metres
+ *   in the folded plane.
+ * @returns The shadow, `[x, y]` in metres in the folded plane.
+ */
+const shadowOf = (fold, [x, y]) => {
+  const [px, py] = fold.from;
+  const length = Math.hypot(fold.to[0] - px, fold.to[1] - py);
+  const ux = (fold.to[0] - px) / length;
+  const uy = (fold.to[1] - py) / length;
+  const along = (x - px) * ux + (y - py) * uy;
+  const footX = px + along * ux;
+  const footY = py + along * uy;
+  const cos = Math.cos(fold.targetRadians);
+
+  return [footX + (x - footX) * cos, footY + (y - footY) * cos];
 };
 
 /** #### Finds each face's layer at each stage, from what lies beneath it
@@ -624,6 +678,11 @@ const stackLayers = (faces, foldCount) => {
  *   that turns both sides or stops short of 180°, which keeps the stage
  *   before's: such a fold leaves the paper in a plane that the bounding
  *   box does not describe.
+ * - At a later stage, a face that an earlier fold stopping short moved
+ *   counts by its shadow, the outline it casts straight down, as
+ *   shadowOf() finds it, rather than by its placement, which lies folded
+ *   flat over the paper only until a later fold moves the paper beside
+ *   its hinge.
  * - A turn-over mirrors the view about its upright axis, through the
  *   origin, so it moves the box's centre exactly as it moves the paper.
  * @param faces The final faces, each with `placements`.
@@ -645,9 +704,14 @@ const stageCentres = (faces, folds, frame) => {
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
-    for (const { placements, polygon } of faces) {
+    for (const { movedBy, placements, polygon } of faces) {
+      const standing = standingFoldOf(folds, movedBy, stage);
       for (const point of polygon) {
-        const [x, y] = toViewFrame(frame, place(placements[stage], point));
+        const placed =
+          standing === -1
+            ? place(placements[stage], point)
+            : shadowOf(folds[standing], place(placements[standing], point));
+        const [x, y] = toViewFrame(frame, placed);
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
         maxX = Math.max(maxX, x);

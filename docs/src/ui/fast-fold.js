@@ -45,6 +45,9 @@ const NEARBY_RADIUS_PX = 120;
  * - Throws at once if the page has no `input[data-fast-fold]` inside a
  *   `<label>`.
  * @param foldButtons The Fold Buttons' pool, from connectFoldButtons().
+ * @param hiddenButtonOf Called with a line's index in the list of lines on
+ *   screen, and returns the button its pair hides, `"mountain"` or
+ *   `"valley"`, for a direction the line cannot fold, or null for none.
  * @param isOverWhiteAt Called with a point on screen, `x` and `y` in CSS
  *   pixels, and returns true if the paper there shows its white side.
  * @param onToggle Called with true when the checkbox is ticked, and false
@@ -57,7 +60,12 @@ const NEARBY_RADIUS_PX = 120;
  *   or null; pairOf(), which takes a line's index and returns its shown
  *   pair, or null; and setShown(), which takes true to show the checkbox.
  */
-export const connectFastFold = (foldButtons, isOverWhiteAt, onToggle) => {
+export const connectFastFold = (
+  foldButtons,
+  hiddenButtonOf,
+  isOverWhiteAt,
+  onToggle,
+) => {
   const checkbox = document.querySelector("input[data-fast-fold]");
   const label = checkbox?.closest("label") ?? null;
   if (label === null) {
@@ -78,11 +86,13 @@ export const connectFastFold = (foldButtons, isOverWhiteAt, onToggle) => {
   const pointer = { x: 0, y: 0 };
 
   /** #### Shows a pair at the placement written into it, and keeps it
+   * - Hides the button for a direction its line cannot fold.
    * - Allocates only the position strings a pair newly placed writes.
    * @param pair The pair, from the pool.
    */
   const add = (pair) => {
     const { placement } = pair;
+    pair.setHiddenButton(hiddenButtonOf(placement.lineIndex));
     pair.setOverWhite(isOverWhiteAt(placement.x, placement.y));
     pair.show();
     shownPairs[shownCount] = pair;
@@ -225,6 +235,7 @@ export const connectFastFold = (foldButtons, isOverWhiteAt, onToggle) => {
       }
       isTaken[j] = true;
       Object.assign(pair.placement, placements[j]);
+      pair.setHiddenButton(hiddenButtonOf(pair.placement.lineIndex));
       pair.setOverWhite(isOverWhiteAt(pair.placement.x, pair.placement.y));
       pair.show();
     }

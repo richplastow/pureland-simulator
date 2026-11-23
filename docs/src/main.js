@@ -23,9 +23,12 @@
  * line folds the paper live, by the side of the line and the distance from
  * it, and Shift with Up or Down steps the active line's fold live; a
  * release or Enter snaps the angle to a whole step and makes the fold,
- * which may stand short of flat, after which nothing more folds. Undo,
- * Redo and Unfold, and their shortcuts, walk the session back and forth,
- * and Export shows the folds the paper shows as a JSON design file.
+ * which may stand short of flat. A standing flap's hinge must stay on
+ * the held side of every later fold, and a fold stops where it would
+ * sweep into a standing flap: its click, drag and steps go no further,
+ * and a direction blocked at once shows no button. Undo, Redo and Unfold,
+ * and their shortcuts, walk the session back and forth, and Export shows
+ * the folds the paper shows as a JSON design file.
  */
 
 import {
@@ -45,7 +48,7 @@ import {
   writeStretchScale,
 } from "./designs/sheet.js";
 import { unsmoothstep } from "./fold/easing.js";
-import { cutSheet } from "./fold/engine.js";
+import { cutSheet, standingFoldOf } from "./fold/engine.js";
 import { foldPositionAt, maxPaperRadius } from "./fold/pose.js";
 import { stepSequence } from "./fold/stepper.js";
 import { connectDrag } from "./input/drag.js";
@@ -72,12 +75,12 @@ import {
   writeFoldMiddle,
 } from "./sandbox/line-pick.js";
 import { PATTERNS } from "./sandbox/patterns.js";
+import { createSession, cutSession, foldAt } from "./sandbox/session.js";
 import {
-  createSession,
-  cutSession,
-  foldAt,
-  hasStandingFold,
-} from "./sandbox/session.js";
+  hingePoints,
+  standingPolygons,
+  sweepLimitRadians,
+} from "./sandbox/standing.js";
 import { createLights } from "./scene/lights.js";
 import {
   PAPER_COLOR_SHADES,
@@ -255,18 +258,19 @@ let isSandbox = true;
 let session = createSession();
 
 // The state the paper rests in, in Sandbox Mode, found once per rest state:
-// the faces as they lie, which say which side of the paper shows where; the
-// lines its lattice can fold along there, and each line's segments, seen
-// from each side of the paper, in the same order; the spans of those lines
-// that are folds, with paper on both sides, which a press or a hover picks
-// from, all together and per line, in the same order as the lines; the
-// Fold Lines, those with a span, which the arrow keys cycle; and the
-// stage's centre, which the pose slides the paper by. No faces or lines
-// while not at rest.
+// the flat faces as they lie, which say which side of the paper shows
+// where; the lines its lattice can fold along there, each line's sweep
+// limits, and each line's segments, seen from each side of the paper, in
+// the same order; the spans of those lines that are folds, with paper on
+// both sides, which a press or a hover picks from, all together and per
+// line, in the same order as the lines; the Fold Lines, those with a span,
+// which the arrow keys cycle; and the stage's centre, which the pose
+// slides the paper by. No faces or lines while not at rest.
 let isAtRest = false;
 let restCentre = null;
 let restFaces = NONE_AT_REST;
 let restFoldLines = NONE_AT_REST;
+let restLimits = NONE_AT_REST;
 let restLines = NONE_AT_REST;
 let restSegments = NONE_AT_REST;
 let restSpans = NONE_AT_REST;
@@ -472,13 +476,17 @@ const choosePattern = (choice) => {
 const checkedDesignChoice = connectDesignRadios(PAPER_COLORS, choose);
 const checkedPatternChoice = connectPatternRadios(PAPER_COLORS, choosePattern);
 
-/** #### Folds a line flat, as a Fold Button says, recutting the sheet
+/** #### Folds a line as far as it goes, as a Fold Button says, recutting
+ * the sheet
  * - The fold is the line, `from` and `to` as the lattice oriented them,
  *   the button's fold turned into the front's terms by the side that
- *   faced the camera when its pair was placed, flat. It replaces the
- *   session with one that keeps the folds before the paper's position, k,
- *   then this fold, recuts the pattern's sheet from it, and sets the
- *   target to k + 1.
+ *   faced the camera when its pair was placed, flat if its sweep limit is
+ *   a half turn and to its limit otherwise. It replaces the session with
+ *   one that keeps the folds before the paper's position, k, then this
+ *   fold, recuts the pattern's sheet from it, and sets the target to
+ *   k + 1.
+ * - Does nothing for a direction whose limit is under `SNAP_RADIANS`,
+ *   which shows no button.
  * - Swaps the new sheet in at once, at rest at k, before the step starts:
  *   both sheets are cut along the same first k folds, so the new one,
  *   posed at k, covers the same paper, in the same order; only heights in
@@ -494,21 +502,65 @@ const checkedPatternChoice = connectPatternRadios(PAPER_COLORS, choosePattern);
  * @param type The fold as the player sees it, `"mountain"` or `"valley"`.
  */
 const foldLine = (line, isFrontFacing, type) => {
-  if (!canPick()) return;
+  const frontType = seenType(isFrontFacing, type);
+  if (!canPick() || limitOf(line, frontType) < SNAP_RADIANS) return;
 
   const { position, sheetId } = sequenceState;
   const { from, to } = line;
   session = foldAt(session, position, {
     from,
-    targetRadians: Math.PI, // flat
+    targetRadians: limitOf(line, frontType),
     to,
-    type: seenType(isFrontFacing, type),
+    type: frontType,
   });
   sheets[sheetId] = cutSession(patterns[sheetId], session);
   sequenceTarget.position = position + 1;
   clearPick();
   writeSequenceState();
   writeSandboxBar();
+};
+
+/** #### Returns the button a line's pair hides, seen from one side
+ * - The fold, as the player sees it, whose sweep limit is under
+ *   `SNAP_RADIANS`, so it cannot fold at all; a line blocked both ways is
+ *   never foldable.
+ * - Allocates nothing.
+ * @param line The line, from `restLines`.
+ * @param isFrontFacing True if the camera faces the paper's front.
+ * @returns `"mountain"` or `"valley"`, or null if both can fold.
+ */
+const hiddenButtonOf = (line, isFrontFacing) => {
+  if (limitOf(line, seenType(isFrontFacing, "mountain")) < SNAP_RADIANS) {
+    return "mountain";
+  }
+  if (limitOf(line, seenType(isFrontFacing, "valley")) < SNAP_RADIANS) {
+    return "valley";
+  }
+
+  return null;
+};
+
+/** #### Returns how far a line can fold one way before it meets a wall
+ * - Allocates nothing.
+ * @param line The line, from `restLines`.
+ * @param type The fold in the front's terms, `"mountain"` or `"valley"`.
+ * @returns The sweep limit, in radians: π if nothing stands in the way.
+ */
+const limitOf = (line, type) => restLimits[restLines.indexOf(line)][type];
+
+/** #### Caps a live fold's signed angle at its line's sweep limit that way
+ * - Allocates nothing.
+ * @param radians The angle, signed, positive towards mountain as seen, in
+ *   radians.
+ * @returns The angle, no further from flat than the limit, in radians.
+ */
+const capLiveRadians = (radians) => {
+  if (radians === 0) return 0;
+
+  const seen = radians > 0 ? "mountain" : "valley";
+  const limit = limitOf(live.line, seenType(live.isFrontFacing, seen));
+
+  return Math.sign(radians) * Math.min(Math.abs(radians), limit);
 };
 
 /** #### Starts a live fold of a Fold Line, flat
@@ -790,6 +842,7 @@ const foldButtons = connectFoldButtons(
 // Slow Fold's pair at the next frame.
 const fastFold = connectFastFold(
   foldButtons,
+  (lineIndex) => hiddenButtonOf(restFoldLines[lineIndex], layoutFrontFacing),
   (x, y) => isOverWhiteAt(x, y),
   (isOn) => {
     if (!isOn) hideFastPairs();
@@ -1180,6 +1233,7 @@ const showActivePair = () => {
     placeBesideClick(screenLine, pair.placement, screenPoint, space);
   }
   if (isAmongTouch) fastFold.hideNear(pair.placement, space);
+  pair.setHiddenButton(hiddenButtonOf(activeLine, isPickFrontFacing));
   pair.setOverWhite(!isPickOnFront);
   pair.setEmphasised(isActiveByKeyboard);
   pair.show();
@@ -1278,15 +1332,18 @@ const isSequenceAtRest = () =>
   sequenceState.linesFade === 0;
 
 /** #### Finds what the paper shows where it now rests, and what can fold
- * - The faces placed at the position's stage, the lines the paper can fold
- *   along there, each line's segments seen from each side, and their fold
- *   spans, once per rest state, so a pointer move compares the hit with at
- *   most a few tens of lines, and lights one by lookup. Also the stage's
- *   centre.
- * - After a fold that stops short, finds no lines at all, so nothing
- *   lights, picks or folds until Undo goes back past it: nothing yet
- *   checks whether a later fold would swing paper through the standing
- *   flap.
+ * - The flat faces placed at the position's stage, the lines the paper
+ *   can fold along there, each line's sweep limits, each line's segments
+ *   seen from each side, and their fold spans, once per rest state, so a
+ *   pointer move compares the hit with at most a few tens of lines, and
+ *   lights one by lookup. Also the stage's centre.
+ * - A face a fold that stops short stood no longer lies in the folded
+ *   plane, so the lines, their inks and the picks read the flat faces
+ *   alone. A line must hold every standing flap's hinge, as
+ *   foldableLines() sets out; each direction's limit is how far its fold
+ *   turns before it sweeps into a standing face, as sweepLimitRadians()
+ *   finds it, π with none standing. A line blocked both ways folds
+ *   nothing, so is left out.
  * - Forgets the remembered keyboard pick, whose line is gone, and marks
  *   the layout stale.
  * - Allocates, so call it only when the paper comes to rest, or a live
@@ -1297,13 +1354,34 @@ const enterRest = () => {
   const sheet = sheets[sheetId];
   const stage = foldPositionAt(position, sheet);
   restCentre = sheet.centres[stage];
-  restFaces = placedFaces(sheet, stage);
-  restLines = hasStandingFold(session, position)
-    ? NONE_AT_REST
-    : foldableLines(
-        patterns[sheetId],
-        restFaces.map(({ polygon }) => polygon),
-      );
+  restFaces = placedFaces(sheet, stage).filter(
+    (_face, i) =>
+      standingFoldOf(sheet.folds, sheet.faces[i].movedBy, stage) === -1,
+  );
+  const flatPolygons = restFaces.map(({ polygon }) => polygon);
+  const walls = standingPolygons(sheet, stage);
+  const limitTo = (line, type) =>
+    sweepLimitRadians(
+      { ...line, targetRadians: Math.PI, type },
+      flatPolygons,
+      walls,
+    );
+  const lines = [];
+  const limits = [];
+  for (const line of foldableLines(
+    patterns[sheetId],
+    flatPolygons,
+    hingePoints(sheet, stage),
+  )) {
+    const mountain = limitTo(line, "mountain");
+    const valley = limitTo(line, "valley");
+    if (mountain < SNAP_RADIANS && valley < SNAP_RADIANS) continue;
+
+    lines.push(line);
+    limits.push({ mountain, valley });
+  }
+  restLimits = limits;
+  restLines = lines;
   restSegments = restLines.map((line) => ({
     back: litSegments(restFaces, false, line),
     front: litSegments(restFaces, true, line),
@@ -1360,11 +1438,12 @@ const writeSpin = () => {
 // line before or after the active one active, in the lattice's order,
 // among the Fold Lines, at the middle of its longest fold span; Up and
 // Down press its pair's buttons. Shift with Up or Down steps the active
-// line's fold live, towards mountain or valley as seen, and Enter makes
-// it; a step back to flat drops it, and Left, Right or Escape first ease
-// it back to flat, as a press or a loss of focus does, while plain Up and
-// Down fold flat at once in its place. Focus leaving the canvas puts a
-// keyboard pick away, and focus returning restores it.
+// line's fold live, towards mountain or valley as seen, no further than
+// its sweep limit that way, and Enter makes it; a step back to flat drops
+// it, and Left, Right or Escape first ease it back to flat, as a press or
+// a loss of focus does, while plain Up and Down fold as far as the line
+// goes at once in its place. Focus leaving the canvas puts a keyboard pick
+// away, and focus returning restores it.
 const pick = connectPick(
   camera,
   canvas,
@@ -1374,13 +1453,20 @@ const pick = connectPick(
       if (!live.isActive) {
         if (activeLine === null || !canPick()) return;
 
+        // A direction blocked at once has no angle to step to.
+        const seen = step > 0 ? "mountain" : "valley";
+        const type = seenType(isPickFrontFacing, seen);
+        if (limitOf(activeLine, type) < SNAP_RADIANS) return;
+
         startLive(true, isPickFrontFacing, activeLine);
       } else if (!isKeyboardAngleShown() || activeLine !== live.line) {
         return;
       }
 
       const radians = live.targetRadians + step * SNAP_RADIANS;
-      const snapped = Math.sign(radians) * snapAngleRadians(Math.abs(radians));
+      const snapped = capLiveRadians(
+        Math.sign(radians) * snapAngleRadians(Math.abs(radians)),
+      );
       if (snapped === 0) {
         releaseLive(0);
         return;
@@ -1514,13 +1600,13 @@ const pickKeyboardLine = (line, isFrontFacing) => {
 // serves it, presses the button on the side it went down on. Once it
 // moves, it folds the line live, by the side of the line the pointer is on
 // and its distance from the line against each side's reach, fixed at the
-// press; on release, the angle snaps to a whole step, or to flat below
-// `CANCEL_RADIANS`, and the fold settles there. Any press first eases a
-// keyboard angle back to flat. Any other press is the drag's,
-// which clears the active line and hides the pairs as it starts, cancels a
-// reset under way where it is, and takes over at once; the pairs are laid
-// out afresh once it ends. A double-click starts a reset from where the
-// spin is, hiding the pairs.
+// press, no further than the line's sweep limit that way; on release, the
+// angle snaps to a whole step, or to flat below `CANCEL_RADIANS`, and the
+// fold settles there. Any press first eases a keyboard angle back to flat.
+// Any other press is the drag's, which clears the active line and hides
+// the pairs as it starts, cancels a reset under way where it is, and takes
+// over at once; the pairs are laid out afresh once it ends. A double-click
+// starts a reset from where the spin is, hiding the pairs.
 connectDrag(canvas, {
   claimsPress: (x, y, pointerType) => {
     easeKeyboardAngleBack();
@@ -1561,7 +1647,9 @@ connectDrag(canvas, {
     }
     if (!live.isActive || live.isByKeyboard || live.isReleased) return;
 
-    setLiveTarget(dragAngleRadians(live.screenLine, live.reaches, x, y));
+    setLiveTarget(
+      capLiveRadians(dragAngleRadians(live.screenLine, live.reaches, x, y)),
+    );
   },
   onClaimedDragCancel: () => {
     const isLiveDrag =
@@ -1581,7 +1669,9 @@ connectDrag(canvas, {
     isClaimDragging = false;
     if (!isLiveDrag) return;
 
-    const radians = dragAngleRadians(live.screenLine, live.reaches, x, y);
+    const radians = capLiveRadians(
+      dragAngleRadians(live.screenLine, live.reaches, x, y),
+    );
     const size = Math.abs(radians);
     releaseLive(
       size < CANCEL_RADIANS ? 0 : Math.sign(radians) * snapAngleRadians(size),
@@ -1713,6 +1803,7 @@ renderer.setAnimationLoop((timestampMs) => {
       hideFastPairs();
       restFaces = NONE_AT_REST;
       restFoldLines = NONE_AT_REST;
+      restLimits = NONE_AT_REST;
       restLines = NONE_AT_REST;
       restSegments = NONE_AT_REST;
       restSpans = NONE_AT_REST;

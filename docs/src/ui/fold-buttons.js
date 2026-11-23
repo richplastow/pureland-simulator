@@ -52,6 +52,8 @@ const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
  *   `--controls-gap`.
  * - Each button passes on the fold it shows, as the player sees it, with
  *   its pair; the caller turns that into the front's terms.
+ * - One button of a pair can be hidden, for a direction its line cannot
+ *   fold; a press on a hidden button, by its pair's press(), does nothing.
  * - Reports a pointer that hovers over a shown pair, a mouse or a pen in
  *   range, never a touch, as it enters the pair, and as it leaves the pair
  *   for anywhere but the canvas, whose own hover then takes over, or
@@ -157,8 +159,10 @@ export const connectFoldButtons = (canvas, onFold, onHover) => {
  *   `y`, written by its owner before show(); hide(), isFree() and
  *   isShown(); holds(), which takes an element, or null, and returns true
  *   if the pair is shown and holds it; press(), which takes a fold and
- *   presses that button;
+ *   presses that button, unless it is hidden;
  *   setEmphasised(), which takes true to draw the pair as hovered;
+ *   setHiddenButton(), which takes a fold, or null, and hides that button
+ *   alone, showing the other;
  *   setOverWhite(), which takes true for the theme over the white side;
  *   setProxied(), which takes a fold, or null, and draws that button as
  *   hovered; and show(), which shows the pair at its placement.
@@ -207,12 +211,33 @@ const createPair = (canvas, onEnter, onFold, onLeave) => {
   };
 
   /** #### Presses one of the pair's buttons, as a pointer would
-   * - Marks it `data-bumped`, then passes the fold on.
+   * - Marks it `data-bumped`, then passes the fold on; does nothing if the
+   *   button is hidden.
    * @param type `"mountain"` or `"valley"`.
    */
   const press = (type) => {
-    buttonOf(type).toggleAttribute("data-bumped", true);
+    const button = buttonOf(type);
+    if (button.hidden) return;
+
+    button.toggleAttribute("data-bumped", true);
     onFold(type, pair);
+  };
+
+  /** #### Hides one of the pair's buttons, or none, showing the other
+   * - Written only on change.
+   * - Allocates nothing.
+   * @param type `"mountain"` or `"valley"`, the button to hide, or null
+   *   to show both.
+   */
+  const setHiddenButton = (type) => {
+    const isValleyHidden = type === "valley";
+    const isMountainHidden = type === "mountain";
+    if (valleyButton.hidden !== isValleyHidden) {
+      valleyButton.hidden = isValleyHidden;
+    }
+    if (mountainButton.hidden !== isMountainHidden) {
+      mountainButton.hidden = isMountainHidden;
+    }
   };
 
   /** #### Draws one of the pair's buttons as hovered, or none
@@ -280,6 +305,7 @@ const createPair = (canvas, onEnter, onFold, onLeave) => {
     setEmphasised: (isEmphasised) => {
       container.toggleAttribute("data-emphasised", isEmphasised);
     },
+    setHiddenButton,
     setOverWhite: (isOverWhite) => {
       container.toggleAttribute("data-over-white", isOverWhite);
     },

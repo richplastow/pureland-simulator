@@ -6,7 +6,7 @@
  */
 
 import { smoothstep } from "./easing.js";
-import { stopsShort, TOLERANCE_METERS } from "./engine.js";
+import { standingFoldOf, stopsShort, TOLERANCE_METERS } from "./engine.js";
 
 // About one sheet of 80 gsm paper; tuned by eye.
 export const PAPER_THICKNESS_METERS = 0.0001;
@@ -36,7 +36,10 @@ const point = new Float64Array(3);
  *   mountain, as pivotLayers() finds it, so no layer swings into the
  *   faces it leaves behind. It presses nothing flat, so the faces it
  *   holds keep their height. Its faces keep that turn, and their shift
- *   before it, from then on.
+ *   before it, from then on, raised or lowered by the change since in
+ *   the stack's height at its line, as pivotLayers() finds it, easing as
+ *   the held faces ease, so a standing flap rides with the paper at its
+ *   hinge as later folds slide paper under it.
  * - A fold whose `turns` is `"both-sides"` turns the whole paper back by
  *   half its angle, about its line, from then on, so the two sides share
  *   the turn.
@@ -71,7 +74,9 @@ export const writePaperPositions = (positions, sequencePosition, sheet) => {
   const fold = folds[foldIndex];
   const progress = smoothstep(foldPosition - foldIndex);
   const isFlatFold = !stopsShort(fold);
-  const foldPivotLayers = isFlatFold ? 0 : pivotLayers(faces, fold, foldIndex);
+  const foldPivotLayers = isFlatFold
+    ? 0
+    : pivotLayers(faces, fold, folds, foldIndex);
   const fromCentre = centres[foldIndex];
   const toCentre = centres[foldIndex + 1];
   const centreX = lerp(fromCentre[0], toCentre[0], progress);
@@ -83,11 +88,7 @@ export const writePaperPositions = (positions, sequencePosition, sheet) => {
 
     // A face that a fold which stops short moved, earlier, stays where
     // that fold put it.
-    let restingFoldIndex = -1;
-    for (let m = 0; m < movedBy.length; m++) {
-      const j = movedBy[m];
-      if (j < foldIndex && stopsShort(folds[j])) restingFoldIndex = j;
-    }
+    const restingFoldIndex = standingFoldOf(folds, movedBy, foldIndex);
 
     let pivot = 0; // the turn's line, in layers above the back
     let stage = foldIndex;
@@ -96,10 +97,22 @@ export const writePaperPositions = (positions, sequencePosition, sheet) => {
     let turnRadians = 0;
     if (restingFoldIndex !== -1) {
       stage = restingFoldIndex;
-      shiftLayers = layers[stage] - 1;
       turnFold = folds[stage];
       turnRadians = turnSign(turnFold) * turnFold.targetRadians;
-      pivot = pivotLayers(faces, turnFold, stage);
+
+      // Ride with the stack at the hinge, which later folds may have raised
+      // or lowered since: the hinge's height now, eased between stages as
+      // the held faces ease, less its height at the flap's own fold.
+      const pivotThen = pivotLayers(faces, turnFold, folds, stage);
+      const pivotNow = isFlatFold
+        ? lerp(
+            pivotLayers(faces, turnFold, folds, foldIndex),
+            pivotLayers(faces, turnFold, folds, foldIndex + 1),
+            progress,
+          )
+        : pivotLayers(faces, turnFold, folds, foldIndex);
+      shiftLayers = layers[stage] - 1 + pivotNow - pivotThen;
+      pivot = pivotNow;
     } else if (movedBy.includes(foldIndex)) {
       const before = layers[foldIndex] - 1;
       shiftLayers = isFlatFold
@@ -129,7 +142,12 @@ export const writePaperPositions = (positions, sequencePosition, sheet) => {
       point[1] = b * x + d * y + ty;
       point[2] = PAPER_THICKNESS_METERS * shiftLayers;
       if (turnRadians !== 0) {
-        rotateAboutLine(turnRadians, turnFold, PAPER_THICKNESS_METERS * pivot);
+        rotateAboutLine(
+          turnRadians,
+          turnFold,
+          PAPER_THICKNESS_METERS * pivot,
+          point,
+        );
       }
 
       // Folds that turn both sides turn the whole paper back by half.
@@ -139,7 +157,12 @@ export const writePaperPositions = (positions, sequencePosition, sheet) => {
           j < foldIndex
             ? folds[j].targetRadians
             : progress * folds[j].targetRadians;
-        rotateAboutLine((-turnSign(folds[j]) * foldRadians) / 2, folds[j], 0);
+        rotateAboutLine(
+          (-turnSign(folds[j]) * foldRadians) / 2,
+          folds[j],
+          0,
+          point,
+        );
       }
 
       // Slide the paper to keep its folded shape centred.
@@ -202,23 +225,28 @@ export const maxPaperRadius = (sheet) => {
   return radiusMeters;
 };
 
-/** #### Returns the height a fold that stops short turns its faces about
+/** #### Returns the stack's height at a fold's line, which it turns about
  * - The highest, for a valley, or the lowest, for a mountain, of every
- *   face with a point on the fold's line at the stage before the fold: a
- *   corner on it, an edge along it, or an edge across it. That counts the
- *   faces the fold holds as well as those it moves, so the moving faces
- *   turn as one block clear of every layer at the hinge, including a held
- *   one that only meets the line at a corner.
+ *   face with a point on the fold's line at a stage: a corner on it, an
+ *   edge along it, or an edge across it. At the stage before a fold that
+ *   stops short, that counts the faces the fold holds as well as those it
+ *   moves, so the moving faces turn as one block clear of every layer at
+ *   the hinge, including a held one that only meets the line at a corner.
+ *   At a later stage, it is the height a standing flap's hinge has
+ *   reached.
+ * - Leaves out every face that a fold before the stage, stopping short of
+ *   π, moved, since it no longer lies in the stack.
  * - The line is the fold's whole line, through its `from` and `to`, met
  *   within `TOLERANCE_METERS`.
  * - Allocates nothing, so it is safe on the per-frame path.
  * - Pure maths, with no DOM or GPU access.
  * @param faces The sheet's faces.
- * @param fold The fold.
- * @param foldIndex The fold's index in the sheet's `folds`.
+ * @param fold The fold whose line to measure at.
+ * @param folds The sheet's folds.
+ * @param stage The stage, from 0 (flat) to the fold count.
  * @returns The height, in layers above the back of the stack.
  */
-export const pivotLayers = (faces, fold, foldIndex) => {
+export const pivotLayers = (faces, fold, folds, stage) => {
   const isValley = fold.type === "valley";
   const px = fold.from[0];
   const py = fold.from[1];
@@ -228,10 +256,11 @@ export const pivotLayers = (faces, fold, foldIndex) => {
 
   let pivot = isValley ? -Infinity : Infinity;
   for (let f = 0; f < faces.length; f++) {
-    const { layers, placements, polygon } = faces[f];
+    const { layers, movedBy, placements, polygon } = faces[f];
+    if (standingFoldOf(folds, movedBy, stage) !== -1) continue;
 
     // Read by index: array destructuring would run an iterator.
-    const placement = placements[foldIndex];
+    const placement = placements[stage];
     const a = placement[0];
     const b = placement[1];
     const c = placement[2];
@@ -252,12 +281,48 @@ export const pivotLayers = (faces, fold, foldIndex) => {
       nearest <= TOLERANCE_METERS && furthest >= -TOLERANCE_METERS;
     if (!meetsLine) continue;
 
-    const below = layers[foldIndex] - 1;
+    const below = layers[stage] - 1;
     pivot = isValley ? Math.max(pivot, below) : Math.min(pivot, below);
   }
 
   return pivot;
 };
+
+/** #### Turns a point in 3D about a fold's line, at a height above z = 0
+ * - Rodrigues' rotation formula, right-handed about the line's `from` to
+ *   `to` direction, so a positive angle turns the line's left side
+ *   towards +Z.
+ * - Writes the turned point over the one given, so it allocates nothing
+ *   and is safe on the per-frame path.
+ * - Pure maths, with no DOM or GPU access.
+ * @param angleRadians The angle to turn by, in radians.
+ * @param fold The fold whose line to turn about.
+ * @param heightMeters The line's height along Z, in metres.
+ * @param vector The point, `[x, y, z]` in metres, overwritten.
+ */
+export const rotateAboutLine = (angleRadians, fold, heightMeters, vector) => {
+  const px = fold.from[0];
+  const py = fold.from[1];
+  const length = Math.hypot(fold.to[0] - px, fold.to[1] - py);
+  const ux = (fold.to[0] - px) / length;
+  const uy = (fold.to[1] - py) / length;
+  const vx = vector[0] - px;
+  const vy = vector[1] - py;
+  const vz = vector[2] - heightMeters;
+  const cos = Math.cos(angleRadians);
+  const sin = Math.sin(angleRadians);
+  const along = (ux * vx + uy * vy) * (1 - cos); // `(u · v)(1 − cos)`
+
+  vector[0] = px + vx * cos + uy * vz * sin + ux * along;
+  vector[1] = py + vy * cos - ux * vz * sin + uy * along;
+  vector[2] = heightMeters + vz * cos + (ux * vy - uy * vx) * sin;
+};
+
+/** #### Returns the direction a fold turns its moving side
+ * @param fold The fold.
+ * @returns 1 for a valley, towards +Z, or −1 for a mountain.
+ */
+export const turnSign = (fold) => (fold.type === "valley" ? 1 : -1);
 
 /** #### Returns how far the model has turned about its upright axis
  * - Each turn-over turns it by −π radians, eased as a fold is, so its
@@ -297,32 +362,6 @@ const clampUnit = (value) => Math.min(Math.max(value, 0), 1);
  */
 const lerp = (from, to, fraction) => from + (to - from) * fraction;
 
-/** #### Turns the scratch point about a fold's line, at a height above z = 0
- * - Rodrigues' rotation formula, right-handed about the line's `from` to
- *   `to` direction, so a positive angle turns the line's left side
- *   towards +Z.
- * @param angleRadians The angle to turn by, in radians.
- * @param fold The fold whose line to turn about.
- * @param heightMeters The line's height along Z, in metres.
- */
-const rotateAboutLine = (angleRadians, fold, heightMeters) => {
-  const px = fold.from[0];
-  const py = fold.from[1];
-  const length = Math.hypot(fold.to[0] - px, fold.to[1] - py);
-  const ux = (fold.to[0] - px) / length;
-  const uy = (fold.to[1] - py) / length;
-  const vx = point[0] - px;
-  const vy = point[1] - py;
-  const vz = point[2] - heightMeters;
-  const cos = Math.cos(angleRadians);
-  const sin = Math.sin(angleRadians);
-  const along = (ux * vx + uy * vy) * (1 - cos); // `(u · v)(1 − cos)`
-
-  point[0] = px + vx * cos + uy * vz * sin + ux * along;
-  point[1] = py + vy * cos - ux * vz * sin + uy * along;
-  point[2] = heightMeters + vz * cos + (ux * vy - uy * vx) * sin;
-};
-
 /** #### Returns the index of the step under way at a sequence position
  * - The last step's, at the end of the sequence.
  * @param sequencePosition From 0 (flat) to the step count.
@@ -331,12 +370,6 @@ const rotateAboutLine = (angleRadians, fold, heightMeters) => {
  */
 const stepIndexAt = (sequencePosition, sheet) =>
   Math.max(0, Math.min(Math.floor(sequencePosition), sheet.steps.length - 1));
-
-/** #### Returns the direction a fold turns its moving side
- * @param fold The fold.
- * @returns 1 for a valley, towards +Z, or −1 for a mountain.
- */
-const turnSign = (fold) => (fold.type === "valley" ? 1 : -1);
 
 /** #### Writes every vertex of a sheet with no folds, posed flat
  * - Each face at its stage-0 placement, raised by the paper's thickness

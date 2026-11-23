@@ -19,7 +19,7 @@ type: plan
   and
   [Angles](../todo/13-sandbox-mode-research.md#7-angles-several-standing-folds-a-stepping-stone-to-the-fold-tree)).
   This plan lets nothing fold after a standing fold but Undo
-  (Decision 5); [Plan 21](../todo/21-standing-folds.md) lifts the limit to
+  (Decision 5); [Plan 21](./21-standing-folds.md) lifts the limit to
   several standing folds.
 - The drag starts from the line, not a Fold Button, and the paper
   itself folds live as the pointer moves, so nothing else shows the
