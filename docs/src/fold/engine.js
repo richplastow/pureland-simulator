@@ -58,10 +58,12 @@ export const TOLERANCE_METERS = 1e-9;
  *   one.
  * - Throws, naming the design and a step by its index in `steps`, before
  *   any fold runs, when a step's `kind` is unknown and when a fold's
- *   `layers` name a step that is not a fold; and, as the folds run, when a
- *   fold moves nothing and when a fold that stops short of 180° is
- *   followed by a fold whose explicit `layers` move its faces. Throws,
- *   naming the design, when the final faces leave a T-junction.
+ *   `layers` name a step that is not a fold: each a fault in the design.
+ * - Throws a FoldRefusal, as the folds run, naming the design and a step,
+ *   when a fold moves nothing and when a fold that stops short of 180° is
+ *   followed by a fold whose explicit `layers` move its faces; and, naming
+ *   the design, when the final faces leave a T-junction. Each is a fold the
+ *   rules refuse, not a fault, so buildGraph() can tell the two apart.
  * - Pure maths, with no DOM or GPU access.
  * @param design The design: `aspect`; `id`; an optional `leanRadians`,
  *   as leanOf() reads it, which cuts nothing; an optional `start`, its
@@ -113,7 +115,7 @@ export const cutSheet = (design) => {
 
   const layers = stackLayers(faces, folds.length);
   if (hasTJunction(faces)) {
-    throw new Error(`Design "${id}" leaves a T-junction`);
+    throw new FoldRefusal(`Design "${id}" leaves a T-junction`);
   }
 
   return {
@@ -195,6 +197,19 @@ export const crossingSegment = (polygon, sides) => {
 
   return ends;
 };
+
+/** #### An error for a fold the rules refuse, not a fault in its caller
+ * - Thrown where a fold moves nothing, where a fold moves the faces of an
+ *   earlier one that stops short of 180°, and where the final faces leave
+ *   a T-junction; and by cutPath() where a `{ movedBy }` names a fold not
+ *   yet made.
+ * - Every other throw here is a plain Error, and cutPath()'s for a bad
+ *   fold index a RangeError, so a caller that catches only this class
+ *   lets every fault through.
+ */
+export class FoldRefusal extends Error {
+  name = "FoldRefusal";
+}
 
 /** #### Places each face's polygon into the folded plane at one stage
  * - Keeps the order of `faces`, and each polygon's corners in their order,
@@ -307,14 +322,14 @@ const applyFold = (faces, foldIndex, sequence) => {
   }
 
   if (moving.length === 0) {
-    throw new Error(
+    throw new FoldRefusal(
       `Step ${stepIndices[foldIndex]} of design "${id}" moves nothing`,
     );
   }
   for (const { movedBy } of moving) {
     const earlier = movedBy.find((j) => stopsShort(folds[j]));
     if (earlier !== undefined) {
-      throw new Error(
+      throw new FoldRefusal(
         `Step ${stepIndices[earlier]} of design "${id}" stops short, ` +
           `but step ${stepIndices[foldIndex]} moves its faces`,
       );

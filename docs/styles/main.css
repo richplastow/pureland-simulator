@@ -361,8 +361,9 @@ body {
 }
 
 /*
- * The groups of choices, the modes, then the patterns or the designs, come
- * first in the bar, each wrapping as a group on a narrow one.
+ * The groups of choices, the modes, then the Gameplay designs, the
+ * patterns or the designs, come first in the bar, each wrapping as a group
+ * on a narrow one.
  */
 .choices {
   display: flex;
@@ -372,9 +373,10 @@ body {
 }
 
 /*
- * The group that the mode does not show, the patterns or the designs, is
- * `hidden`, which the `display` above would otherwise override, since an
- * author rule outranks the browser's own `[hidden] { display: none }`.
+ * The two groups that the mode does not show, of the Gameplay designs, the
+ * patterns and the designs, are `hidden`, which the `display` above would
+ * otherwise override, since an author rule outranks the browser's own
+ * `[hidden] { display: none }`.
  */
 .choices[hidden] {
   display: none;

@@ -4,6 +4,7 @@
  */
 
 import {
+  FoldRefusal,
   placedPolygons,
   stopsShort,
   TOLERANCE_METERS,
@@ -18,7 +19,7 @@ import { cutPath } from "./path.js";
  *   fold order. Doomed states are built too, so every judgement is a
  *   lookup.
  * - A fold is available under the printed rule: cutPath() makes it
- *   without throwing, it makes at least one crease, and every crease it
+ *   without a FoldRefusal, it makes at least one crease, and every crease it
  *   makes lies, end to end, along the creases the design's own order adds
  *   at that fold, which may be several collinear pieces. Under the
  *   standing rule, once a fold that stops short of 180° is made, only
@@ -30,7 +31,8 @@ import { cutPath } from "./path.js";
  * - The goal is the node the design's own order leads to. A node is live
  *   if it is the goal or has an edge to a live node.
  * - Throws, naming the design and the fold, when the design's own order
- *   cannot be made under these rules.
+ *   cannot be made under these rules; and throws on any error cutPath()
+ *   throws other than a FoldRefusal, a fault in the design or the engine.
  * - Frozen through and through. Pure maths, with no DOM or GPU access.
  * @param sheet The design's own sheet, from cutSheet(design).
  * @returns The graph: `designId`; `foldCount`, the design's; `goalNodeId`;
@@ -116,9 +118,10 @@ export const buildGraph = (sheet) => {
 };
 
 /** #### Returns a path cut as a sheet, or null if the engine refuses it
- * - The engine refuses with a plain Error, when a fold moves nothing,
- *   say, and cutPath() with a RangeError, when a `{ movedBy }` names a
- *   fold not yet made. Any other error is a fault, so is thrown on.
+ * - The engine and cutPath() refuse with a FoldRefusal: when a fold moves
+ *   nothing, say, or a `{ movedBy }` names a fold not yet made. Any other
+ *   error, a plain Error or a RangeError included, is a fault, so is
+ *   thrown on.
  * @param sheet The design's own sheet.
  * @param path Indices in `sheet.folds`, in the order folded.
  * @returns The cut sheet, from cutPath(), or null.
@@ -127,9 +130,7 @@ const cutIfAllowed = (sheet, path) => {
   try {
     return cutPath(sheet, path, false);
   } catch (error) {
-    if (error.constructor === Error || error instanceof RangeError) {
-      return null;
-    }
+    if (error instanceof FoldRefusal) return null;
     throw error;
   }
 };

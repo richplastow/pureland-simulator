@@ -12,7 +12,7 @@ type: plan
   its [likely plans](../todo/14-gameplay-mode-research.md#8-likely-plans)
   order. This one delivers the pure maths: which designs the mode
   offers, a path of a design's folds cut as a sheet, and each design's
-  maze as a graph of states. [Plan 23](../todo/23-gameplay-mode.md) puts the
+  maze as a graph of states. [Plan 23](./23-gameplay-mode.md) puts the
   mode on the page, [Plan 24](../todo/24-gameplay-folds.md) folds it, and
   [Plan 25](../todo/25-gameplay-game.md) adds dead ends, lives, hints and
   points.

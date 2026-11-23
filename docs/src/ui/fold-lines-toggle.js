@@ -5,11 +5,11 @@
  * - Enables the checkbox at connection, whatever the browser restored:
  *   Firefox keeps a form control's disabled state across a reload
  *   (https://bugzilla.mozilla.org/show_bug.cgi?id=654072).
- * - Returns setForcedOn(), which forces the lines on, for Sandbox Mode:
- *   while forced, the checkbox is ticked and disabled, and passes true
- *   on; once released, it is enabled again with the state it had, and
- *   passes that on. Forcing or releasing it twice does nothing the second
- *   time.
+ * - Returns setForcedOn(), which forces the lines on, for Gameplay Mode
+ *   and Sandbox Mode: while forced, the checkbox is ticked and disabled,
+ *   and passes true on; once released, in Presentation Mode, it is
+ *   enabled again with the state it had, and passes that on. Forcing or
+ *   releasing it twice does nothing the second time.
  * - Throws at once if the page has no `input[data-fold-lines]`.
  * @param onChange Called with true if the lines are switched on: the
  *   checkbox is ticked, or forced on.

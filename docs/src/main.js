@@ -1,18 +1,21 @@
 /**
  * @fileoverview
  * Entry point: draws a lit sheet of paper, which shadows itself, on a
- * transparent canvas. In Presentation Mode it folds the paper into the
- * design a radio chooses, turning it over where the design says, or back
- * to flat; in Sandbox Mode, where the page starts, it unfolds the paper to
- * the flat sheet of the pattern a radio chooses, with the pattern's lattice
- * printed on it. It stretches the flat sheet from one shape to the next
- * between them while turning it to the next's starting pose and lean,
- * prints each design's fold lines on it as it folds and unfolds while the
- * "Fold lines" checkbox is ticked, or always in Sandbox Mode, but fades
- * them out on the finished model at rest, fades its front to the colour a
- * swatch names, or a design or pattern names once it takes over the flat
- * sheet, and turns it like a turntable as a drag on the canvas moves,
- * easing it back on a double-click; Escape hides and shows the toolbar.
+ * transparent canvas. In Gameplay Mode, where the page starts, it unfolds
+ * the paper to the flat gameplay sheet of the Gameplay design a radio
+ * chooses, with the design's whole crease pattern printed on it, in its
+ * starting pose; in Presentation Mode it folds the paper into the design a
+ * radio chooses, turning it over where the design says, or back to flat;
+ * in Sandbox Mode it unfolds the paper to the flat sheet of the pattern a
+ * radio chooses, with the pattern's lattice printed on it. It stretches
+ * the flat sheet from one shape to the next between them while turning it
+ * to the next's starting pose and lean, prints each design's fold lines on
+ * it as it folds and unfolds while the "Fold lines" checkbox is ticked, or
+ * always in Gameplay Mode and Sandbox Mode, but fades them out on the
+ * finished model at rest, fades its front to the colour a swatch names, or
+ * a design or pattern names once its sheet takes over the flat sheet, and
+ * turns it like a turntable as a drag on the canvas moves, easing it back
+ * on a double-click; Escape hides and shows the toolbar.
  * In Sandbox Mode at rest, a hover lights the nearest Fold Line, and a
  * click, a tap or Left and Right make one active, showing its two Fold
  * Buttons on it, which fold it flat, valley or mountain as the player sees
@@ -41,7 +44,7 @@ import {
 } from "three";
 import { distanceToFitSphere } from "./camera/fit.js";
 import { writeDesignFile } from "./designs/design-file.js";
-import { DESIGNS } from "./designs/list.js";
+import { DESIGNS, GAMEPLAY_DESIGNS } from "./designs/list.js";
 import {
   writeLean,
   writeStartPose,
@@ -51,6 +54,8 @@ import { unsmoothstep } from "./fold/easing.js";
 import { cutSheet, standingFoldOf } from "./fold/engine.js";
 import { foldPositionAt, maxPaperRadius } from "./fold/pose.js";
 import { stepSequence } from "./fold/stepper.js";
+import { buildGraph } from "./gameplay/graph.js";
+import { cutPath, gameplaySheetId } from "./gameplay/path.js";
 import { connectDrag } from "./input/drag.js";
 import { connectMouseDetection } from "./input/mouse.js";
 import { connectPick } from "./input/pick.js";
@@ -103,6 +108,7 @@ import {
 } from "./ui/fold-button-layout.js";
 import { connectFoldButtons } from "./ui/fold-buttons.js";
 import { connectFoldLinesToggle } from "./ui/fold-lines-toggle.js";
+import { connectGameplayRadios } from "./ui/gameplay-radios.js";
 import { connectModeRadios } from "./ui/mode-radios.js";
 import { connectPatternRadios } from "./ui/pattern-radios.js";
 import { connectSandboxBar } from "./ui/sandbox-bar.js";
@@ -136,17 +142,16 @@ const PICK_DISTANCE_METERS = 0.008;
 const canvas = document.querySelector(".scene");
 const controls = document.querySelector(".controls");
 
-// Every design and every pattern, keyed by its `id`, for its colour.
-const designs = Object.fromEntries(
-  DESIGNS.map((design) => [design.id, design]),
-);
+// Every pattern, keyed by its `id`, for Sandbox Mode's sessions on it.
 const patterns = Object.fromEntries(
   PATTERNS.map((pattern) => [pattern.id, pattern]),
 );
 
-// Every sheet the paper can show, cut once at load, keyed by the `id` of
-// the design or pattern it is cut from: each design's, and each pattern's
-// flat sheet, cut from the empty session.
+// Every sheet the paper can show, cut once at load: each design's, keyed
+// by the design's `id`; each Gameplay design's flat gameplay sheet, cut
+// from its own with no folds made, keyed by gameplaySheetId(); and each
+// pattern's flat sheet, cut from the empty session, keyed by the pattern's
+// `id`.
 const sheets = {
   ...Object.fromEntries(DESIGNS.map((design) => [design.id, cutSheet(design)])),
   ...Object.fromEntries(
@@ -156,13 +161,36 @@ const sheets = {
     ]),
   ),
 };
-const [firstPattern] = PATTERNS;
+for (const { id } of GAMEPLAY_DESIGNS) {
+  sheets[gameplaySheetId(id)] = cutPath(sheets[id], [], false);
+}
+const [firstGameplayDesign] = GAMEPLAY_DESIGNS;
+const firstSheetId = gameplaySheetId(firstGameplayDesign.id);
+
+// Each sheet's paper colour, keyed as `sheets` is: a design's `colorId`,
+// or undefined if it names none, for both its own sheet and its gameplay
+// sheet, and a pattern's `colorId` for its sheet.
+const sheetColorIds = {
+  ...Object.fromEntries(DESIGNS.map(({ colorId, id }) => [id, colorId])),
+  ...Object.fromEntries(
+    GAMEPLAY_DESIGNS.map(({ colorId, id }) => [gameplaySheetId(id), colorId]),
+  ),
+  ...Object.fromEntries(PATTERNS.map(({ colorId, id }) => [id, colorId])),
+};
+
+// Each Gameplay design's graph, its maze of every state its folds reach,
+// built once at load from its own sheet and keyed by the design's `id`.
+const graphs = Object.fromEntries(
+  GAMEPLAY_DESIGNS.map(({ id }) => [id, buildGraph(sheets[id])]),
+);
 
 // The sphere that holds the paper over every design's whole fold sequence,
-// so the camera never moves while the paper folds or switches sheets. A
-// pattern's flat sheet lies inside it, so it counts the designs' alone.
+// and over every state and fold of every Gameplay design's graph, so the
+// camera never moves while the paper folds or switches sheets. A flat
+// sheet lies inside it, so it counts the designs and the graphs alone.
 const paperRadiusMeters = Math.max(
   ...DESIGNS.map((design) => maxPaperRadius(sheets[design.id])),
+  ...Object.values(graphs).map(({ radiusMeters }) => radiusMeters),
 );
 
 // An `alpha` canvas clears to transparent, so the page shows through.
@@ -188,17 +216,18 @@ const camera = new PerspectiveCamera(
 );
 const timer = new Timer();
 
-// The paper starts in Sandbox Mode, at rest on the first pattern's flat
-// sheet, position 0, with its lattice showing, as the mode forces the fold
-// lines on, and stays there until a pattern or a mode is chosen. The target
-// names that same point, so the stepper has nothing to do at load. The
-// target's `linesOn` follows the checkbox, which a browser may restore on
-// reload, or is forced on in Sandbox Mode, and governs the lines while the
-// paper folds and unfolds.
+// The paper starts in Gameplay Mode, at rest on the first Gameplay
+// design's flat gameplay sheet, position 0, with its crease pattern
+// showing, as the mode forces the fold lines on, and stays there until a
+// design or a mode is chosen. The target names that same point, so the
+// stepper has nothing to do at load. The target's `linesOn` follows the
+// checkbox, which a browser may restore on reload, or is forced on in
+// Gameplay Mode and Sandbox Mode, and governs the lines while the paper
+// folds and unfolds.
 const sequenceTarget = {
   linesOn: true, // replaced by the checkbox's state at connection
   position: 0,
-  sheetId: firstPattern.id,
+  sheetId: firstSheetId,
 };
 const forceLinesOn = connectFoldLinesToggle((linesOn) => {
   sequenceTarget.linesOn = linesOn;
@@ -208,28 +237,29 @@ const sequenceState = {
   linesFade: 0,
   linesVisibility: 1,
   position: 0,
-  sheetId: firstPattern.id,
-  stretchFromId: firstPattern.id,
+  sheetId: firstSheetId,
+  stretchFromId: firstSheetId,
   stretchProgress: 1,
 };
 
-// The paper takes the first pattern's colour from its first frame.
+// The paper takes the first Gameplay design's colour from its first frame.
 const paper = createPaper(
-  PAPER_COLORS[firstPattern.colorId],
+  PAPER_COLORS[firstGameplayDesign.colorId],
   paperRadiusMeters,
   sheets[sequenceState.sheetId],
 );
 
-// The front's colour fade, done at load, with the first pattern's swatch
-// checked, whatever the browser restored on reload. A swatch's colour
-// starts at once, whatever the fold sequence is doing, and a design's when
-// it takes over the flat sheet, or at once if the paper already holds it;
-// each fades from the colour then showing. The lit lines and the Fold
-// Buttons follow the colour chosen at once, through `chosenColorId`.
+// The front's colour fade, done at load, with the first Gameplay design's
+// swatch checked, whatever the browser restored on reload. A swatch's
+// colour starts at once, whatever the fold sequence is doing, and a
+// design's when its sheet takes over the flat sheet, or at once if the
+// paper already holds it; each fades from the colour then showing. The lit
+// lines and the Fold Buttons follow the colour chosen at once, through
+// `chosenColorId`.
 const colorFade = { progress: 1 };
-let chosenColorId = firstPattern.colorId;
+let chosenColorId = firstGameplayDesign.colorId;
 const chooseColor = connectColorSwatches(
-  firstPattern.colorId,
+  firstGameplayDesign.colorId,
   PAPER_COLORS,
   (colorId) => {
     paper.startFrontColorFade(PAPER_COLORS[colorId]);
@@ -251,10 +281,14 @@ let shownSheetId = sequenceState.sheetId;
 const spin = { pitchRadians: 0, yawRadians: 0 };
 const spinReset = { fromPitchRadians: 0, fromYawRadians: 0, progress: 1 };
 
+// The mode shown, `"gameplay"`, `"presentation"` or `"sandbox"`, as one
+// value, so no pair of flags can disagree; chooseMode() sets it, and the
+// page starts in Gameplay Mode.
+let mode = "gameplay";
+
 // Sandbox Mode's session: the folds made so far, with any undone tail kept
 // for Redo, on the pattern the target names. Reset to empty whenever a
 // pattern or Sandbox Mode is chosen, which discards it without a warning.
-let isSandbox = true;
 let session = createSession();
 
 // The state the paper rests in, in Sandbox Mode, found once per rest state:
@@ -437,7 +471,7 @@ new ResizeObserver(([entry]) => {
   isLayoutStale = true;
 }).observe(canvas);
 
-/** #### Passes a design's or a pattern's choice on to the target and colour
+/** #### Passes a design's, a Gameplay design's or a pattern's choice on
  * - A choice or a tick mid-step changes only the target, which the stepper
  *   reads once the step, fade or stretch in progress finishes. A choice's
  *   target carries no `linesOn`, so Object.assign() keeps the checkbox's.
@@ -449,7 +483,8 @@ new ResizeObserver(([entry]) => {
  *   chosen.
  * - Drops a live fold first, restoring the rest sheet.
  * @param choice The choice: `colorId`, or null for none; and `target`,
- *   its `position` and `sheetId`, or null for flat.
+ *   its `position` and `sheetId`, or null for flat. A Gameplay design's
+ *   choice also carries its `designId`, which is not read here.
  */
 const choose = ({ colorId, target }) => {
   dropLive();
@@ -474,6 +509,7 @@ const choosePattern = (choice) => {
 };
 
 const checkedDesignChoice = connectDesignRadios(PAPER_COLORS, choose);
+const checkedGameplayChoice = connectGameplayRadios(PAPER_COLORS, choose);
 const checkedPatternChoice = connectPatternRadios(PAPER_COLORS, choosePattern);
 
 /** #### Folds a line as far as it goes, as a Fold Button says, recutting
@@ -901,28 +937,37 @@ const writeSandboxBar = () => {
 };
 
 /** #### Applies a mode: its fold lines, its toolbar, and its choice
- * - Forces the fold lines on in Sandbox Mode, or releases them in
- *   Presentation Mode, shows the sandbox bar and the "Fast Fold" checkbox
- *   in Sandbox Mode only, and passes on the choice of the checked pattern
- *   or design, as if that radio had been chosen.
+ * - Forces the fold lines on in Gameplay Mode and Sandbox Mode, or
+ *   releases them in Presentation Mode, shows the sandbox bar and the
+ *   "Fast Fold" checkbox in Sandbox Mode only, and passes on the choice of
+ *   the checked Gameplay design, design or pattern, as if that radio had
+ *   been chosen.
  * - A mode can arrive twice, and does nothing the second time but empty an
  *   empty session.
- * @param mode `"presentation"` or `"sandbox"`.
+ * @param chosenMode `"gameplay"`, `"presentation"` or `"sandbox"`.
  */
-const chooseMode = (mode) => {
-  isSandbox = mode === "sandbox";
-  forceLinesOn(isSandbox);
-  sandboxBar.setShown(isSandbox);
-  fastFold.setShown(isSandbox);
-  if (isSandbox) {
-    choosePattern(checkedPatternChoice());
-  } else {
-    choose(checkedDesignChoice());
+const chooseMode = (chosenMode) => {
+  mode = chosenMode;
+  forceLinesOn(mode !== "presentation");
+  sandboxBar.setShown(mode === "sandbox");
+  fastFold.setShown(mode === "sandbox");
+  switch (mode) {
+    case "gameplay":
+      choose(checkedGameplayChoice());
+      break;
+    case "presentation":
+      choose(checkedDesignChoice());
+      break;
+    case "sandbox":
+      choosePattern(checkedPatternChoice());
+      break;
+    default:
+      throw new Error(`Unknown mode: "${mode}"`);
   }
 };
 
 connectModeRadios(chooseMode);
-chooseMode("sandbox");
+chooseMode("gameplay");
 
 /** #### Returns true if the pairs can be laid out now
  * - In Sandbox Mode, with the lines found for the rest state, the
@@ -1325,7 +1370,7 @@ writePickColors();
  * @returns True if at rest.
  */
 const isSequenceAtRest = () =>
-  isSandbox &&
+  mode === "sandbox" &&
   sequenceState.sheetId === sequenceTarget.sheetId &&
   sequenceState.position === sequenceTarget.position &&
   sequenceState.stretchProgress === 1 &&
@@ -1729,10 +1774,12 @@ canvas.addEventListener("dblclick", () => {
  *   lines hidden, for a design or a pattern, or at a sandbox fold's
  *   position with its lines showing, for a sandbox fold. Redraws the
  *   printed lines only when the new sheet's `designId` differs from the
- *   old one's, since a sandbox fold keeps the pattern's lattice.
- * - Chooses the colour of the design or pattern `sheetId` names, if it
- *   names one, if `sheetId` has changed. Then poses the paper, shows its
- *   lines, and writes the stretch, the start pose and the lean.
+ *   old one's, since a sandbox fold keeps the pattern's lattice, and a
+ *   design's gameplay sheet prints the design's own lines.
+ * - Chooses the colour `sheetColorIds` gives the sheet `sheetId` names, if
+ *   it gives one, if `sheetId` has changed: a design's, for its own sheet
+ *   and its gameplay sheet alike, or a pattern's. Then poses the paper,
+ *   shows its lines, and writes the stretch, the start pose and the lean.
  * - Writes the scale, the pose and the lean on every change, so the scale
  *   ends on exactly 1, and the pose and the lean on exactly the sheet's.
  *   Refits the grain after the scale, in the same frame: setSheet() fits
@@ -1749,7 +1796,7 @@ const writeSequenceState = () => {
   }
   if (sequenceState.sheetId !== shownSheetId) {
     shownSheetId = sequenceState.sheetId;
-    const { colorId } = designs[shownSheetId] ?? patterns[shownSheetId];
+    const colorId = sheetColorIds[shownSheetId];
     if (colorId !== undefined) chooseColor(colorId);
   }
   paper.setSequencePosition(sequenceState.position);

@@ -7,25 +7,30 @@ type: plan
 ## Context
 
 - The second of the four Basic Gameplay Mode plans, after
-  [Plan 22](../done/22-gameplay-graph.md), whose designs, sheets and graphs it
-  puts on the page, and before [Plan 24](./24-gameplay-folds.md), which
+  [Plan 22](./22-gameplay-graph.md), whose designs, sheets and graphs it
+  puts on the page, and before [Plan 24](../todo/24-gameplay-folds.md), which
   folds them. It delivers the mode itself: a third mode radio, the
   Gameplay designs' own radios, each design's flat sheet printed with
   its whole crease pattern in its starting pose and colour, and the
   unfold, stretch and turn between that sheet and the other modes, all
   with the stepper as it is.
 - It implements the research's
-  [Entering Gameplay Mode](./14-gameplay-mode-research.md#entering-gameplay-mode),
-  [gameplay sheet](./14-gameplay-mode-research.md#3-the-gameplay-sheet-one-sheet-cut-along-the-players-path)
+  [Entering Gameplay Mode](../todo/14-gameplay-mode-research.md#entering-gameplay-mode),
+  [gameplay sheet](../todo/14-gameplay-mode-research.md#3-the-gameplay-sheet-one-sheet-cut-along-the-players-path)
   (flat, not yet folded) and
-  [toolbar](./14-gameplay-mode-research.md#7-the-toolbar), as
-  [Plan 16](../done/16-sandbox-mode.md) did for Sandbox Mode.
-- It departs from the research in one way: the brief's
-  [Modes](./14-gameplay-mode-research.md#modes) keeps Presentation Mode
+  [toolbar](../todo/14-gameplay-mode-research.md#7-the-toolbar), as
+  [Plan 16](./16-sandbox-mode.md) did for Sandbox Mode.
+- It departs from the research in two ways. The brief's
+  [Modes](../todo/14-gameplay-mode-research.md#modes) keeps Presentation Mode
   the default, but the app now boots in Gameplay Mode, so the game is
-  one reload away while it is built and QA'd.
+  one reload away while it is built and QA'd. And the research's
+  [toolbar](../todo/14-gameplay-mode-research.md#7-the-toolbar) shares one
+  group of design radios between the modes, hiding "Flat" in Gameplay
+  Mode, whereas Decision 3 gives Plan 22's four Gameplay designs their
+  own radios, so Presentation Mode returns to its own checked design,
+  not to the one last played.
 - That settles the boot mode that the backlog's
-  [Boot mode, Fast Fold default and an early mouse reveal](./backlog/20261116-boot-mode-and-mouse-reveal.md)
+  [Boot mode, Fast Fold default and an early mouse reveal](../todo/backlog/20261116-boot-mode-and-mouse-reveal.md)
   left open; Plan 24 settles the rest of that item and closes it.
 - Needed because nothing on the page yet knows Gameplay Mode, and a
   design's sheet in Presentation Mode cannot stand in for its flat
@@ -33,7 +38,7 @@ type: plan
 - It first gives a fold the rules refuse its own error, so
   buildGraph(), which runs at load from this plan on, tells a refused
   fold from a fault (Decision 11). That replaces the RangeError
-  [Plan 22's Decision 2](../done/22-gameplay-graph.md#decisions) gives
+  [Plan 22's Decision 2](./22-gameplay-graph.md#decisions) gives
   a `{ movedBy }` naming a fold not yet made, so Plan 22's Step 1
   Agent QA 4 no longer prints what it expects on its second line.
 - Browser behaviour it rests on: the
@@ -55,7 +60,7 @@ type: plan
    first Gameplay design's flat gameplay sheet, the blintz's, in its
    blue, its lines showing, with nothing to animate, as it started on
    the first pattern's since
-   [Plan 18](../done/18-fast-fold.md). Sandbox Mode and Presentation
+   [Plan 18](./18-fast-fold.md). Sandbox Mode and Presentation
    Mode are one click away, each as before.
 3. **The Gameplay designs have their own radios**, `name="gameplay-design"`,
    in a `.choices.gameplay-designs` group after the mode group, a
@@ -63,13 +68,14 @@ type: plan
    `GAMEPLAY_DESIGNS`'s order, each `value` the design's `id`, labelled
    "Blintz", "Yacht", "Mount Fuji" and "Paper Dart". The first is
    checked at load. The new `docs/src/ui/gameplay-radios.js` connects
-   them as `pattern-radios.js` connects the patterns: each choice is
-   frozen, passed on at both `change` and `click`, and
-   connectGameplayRadios() returns checkedGameplayChoice(). It throws
-   at once on a `value` that names no Gameplay design, a `colorId` that
-   names no colour, or a missing first radio. The Presentation
-   designs' group keeps its own checked radio, so each mode remembers
-   its own design.
+   them as `pattern-radios.js` connects the patterns: each choice, the
+   design's `colorId` and `designId` and a `target` at position 0 on
+   its gameplay sheet, is frozen and passed on at both `change` and
+   `click`, and connectGameplayRadios(colors, onChoose) returns
+   checkedGameplayChoice(). It throws at once on a `value` that names
+   no Gameplay design, a `colorId` that names no colour, or a missing
+   first radio. The Presentation designs' group keeps its own checked
+   radio, so each mode remembers its own design.
 
    The paper dart's choice:
 
@@ -94,7 +100,7 @@ type: plan
      back in (3.9 s for the dart, measured).
    - Plan 24 replaces the sheet under the same id at every fold, as a
      pattern's is replaced, since the paper swaps sheets by identity
-     ([Plan 16, Decision 2](../done/16-sandbox-mode.md#decisions)).
+     ([Plan 16, Decision 2](./16-sandbox-mode.md#decisions)).
    - A gameplay sheet's colour is its design's `colorId`, applied when
      the sheet takes over the flat paper, as a design's and a pattern's
      are. Its `designId` is the design's, so the printed lines, the
@@ -104,21 +110,22 @@ type: plan
    25. `paperRadiusMeters` becomes the largest of the designs' own
    sheets' radius and the graphs' `radiusMeters`: still 0.1189 m, the
    heart's, so the camera, the lights and the bounding sphere do not
-   move ([Plan 22, Decision 10](../done/22-gameplay-graph.md#decisions)). The
+   move ([Plan 22, Decision 10](./22-gameplay-graph.md#decisions)). The
    four build in about 50 ms in Node on the Lead Developer's Mac
    (measured 2026-11-23); Manual QA 9 measures the load in a browser.
 6. **Choosing Gameplay Mode, or a Gameplay design, sets the target**
    to position 0 on that design's gameplay sheet, as choosing a pattern
    does: the stepper unfolds whatever is folded, fades its lines out,
    stretches and turns the flat sheet to the design's shape, starting
-   pose and lean, fades its colour in and its lines in, and rests.
+   pose and lean where they differ from the sheet's before, fades its
+   colour in and its lines in, and rests.
    - The mode's choice passes on the checked Gameplay design's choice,
      as if that radio had been chosen; Presentation Mode still passes
      on its own checked design's, and Sandbox Mode its checked
      pattern's.
    - A choice that arrives twice does nothing the second time.
 7. **In Gameplay Mode "Fold lines" is forced on**, as in Sandbox Mode
-   ([Plan 16, Decision 7](../done/16-sandbox-mode.md#decisions)), since
+   ([Plan 16, Decision 7](./16-sandbox-mode.md#decisions)), since
    the game needs its lines; the sandbox bar and the "Fast Fold"
    checkbox are hidden; and nothing lights or folds yet. The rest
    state that finds Fold Lines stays Sandbox Mode's alone until
@@ -130,7 +137,7 @@ type: plan
    with nothing focused, `docs/src/ui/controls-toggle.js` moves focus
    to the checked Gameplay design in Gameplay Mode, as it does to the
    checked pattern in Sandbox Mode
-   ([Plan 16, Decision 8](../done/16-sandbox-mode.md#decisions)).
+   ([Plan 16, Decision 8](./16-sandbox-mode.md#decisions)).
 10. **The canvas's label stands**: "folds into designs or along a
     printed grid" covers Gameplay Mode too.
 11. **A fold the rules refuse throws a FoldRefusal**, a subclass of
@@ -149,7 +156,7 @@ type: plan
       a FoldRefusal only, and throws every other error on, a plain
       Error or a native RangeError, such as a stack overflow, included.
     - No figure changes: all six designs' graphs keep every figure in
-      [Plan 22's Decision 1](../done/22-gameplay-graph.md#decisions)
+      [Plan 22's Decision 1](./22-gameplay-graph.md#decisions)
       table, and the search over them meets only two of the refusals,
       a fold that moves nothing and a `{ movedBy }` not yet made
       (measured 2026-11-23 against a prototype).
@@ -169,22 +176,31 @@ The target the paper rests at when the page loads:
 ### Step 1: A refused fold throws its own error
 
 - Changes `docs/src/fold/engine.js` (FoldRefusal, thrown at its three
-  refusals), `docs/src/gameplay/path.js` (the `{ movedBy }` refusal)
-  and `docs/src/gameplay/graph.js` (cutIfAllowed() and its doc
-  comment), per Decision 11. Nothing the page shows changes.
-- It should throw a FoldRefusal for a fold the rules refuse, and keep
-  a RangeError for a bad fold index (Agent QA 1).
+  refusals, and cutSheet()'s doc comment), `docs/src/gameplay/path.js`
+  (the `{ movedBy }` refusal and cutPath()'s doc comment) and
+  `docs/src/gameplay/graph.js` (cutIfAllowed() and its doc comment),
+  per Decision 11. Nothing the page shows changes.
+- It should throw a FoldRefusal for each of the four refusals, and keep
+  a RangeError for a bad fold index and a plain Error for a fault in a
+  design (Agent QA 1).
 - It should let buildGraph() catch a FoldRefusal and nothing else,
   and find all six designs' graphs as before (Agent QA 2, 3).
 
 **Agent QA**
 
-1. Do: `node --input-type=module -e 'import { DESIGNS } from "./docs/src/designs/list.js"; import { createFold } from "./docs/src/designs/steps.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { cutPath } from "./docs/src/gameplay/path.js"; const sheet = cutSheet(DESIGNS.find((d) => d.id === "paper-dart")); const tries = [() => cutPath(sheet, [5, 4], false), () => cutPath(sheet, [0, 0], false), () => cutPath(sheet, [7], false), () => cutSheet({ aspect: 1, id: "off", steps: [createFold([-0.2, -0.075], "all", [-0.2, 0.075], "valley")] })]; console.log(tries.map((t) => { try { t(); return "none"; } catch (e) { return e.name + (e instanceof Error ? "" : "!"); } }).join(" "));'`
-   Expect: `FoldRefusal RangeError RangeError FoldRefusal` (the dart's
-   left wing before its centre fold; a fold repeated; a fold the dart
-   lacks; and a fold whose line lies off the sheet, so moves nothing)
-2. Do: `grep -c "instanceof FoldRefusal" docs/src/gameplay/graph.js; grep -c "constructor === Error\|instanceof RangeError" docs/src/gameplay/graph.js`
-   Expect: `1`, then `0`
+1. Do: `node --input-type=module -e 'import { DESIGNS } from "./docs/src/designs/list.js"; import { createFold } from "./docs/src/designs/steps.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { cutPath } from "./docs/src/gameplay/path.js"; const sheet = cutSheet(DESIGNS.find((d) => d.id === "paper-dart")); const halves = (targetRadians) => ({ aspect: 1, id: "halves", steps: [createFold([0, -0.075], "all", [0, 0.075], "valley", { targetRadians }), createFold([0.075, 0], { movedBy: 0 }, [-0.075, 0], "valley")] }); const tries = [() => cutPath(sheet, [5, 4], false), () => cutPath(sheet, [0, 0], false), () => cutPath(sheet, [7], false), () => cutSheet({ aspect: 1, id: "off", steps: [createFold([-0.2, -0.075], "all", [-0.2, 0.075], "valley")] }), () => cutSheet(halves(Math.PI / 2)), () => cutSheet(halves(Math.PI)), () => cutSheet({ aspect: 1, id: "odd", steps: [{ kind: "crease" }] })]; console.log(tries.map((t) => { try { t(); return "none"; } catch (e) { return e.name + (e instanceof Error ? "" : "!"); } }).join(" "));'`
+   Expect: `FoldRefusal RangeError RangeError FoldRefusal FoldRefusal FoldRefusal Error`
+   (the dart's left wing before its centre fold; a fold repeated; a
+   fold the dart lacks; a fold whose line lies off the sheet, so moves
+   nothing; a sheet folded in half to 90°, whose standing half alone a
+   second fold then moves; the same folded flat, where that second
+   fold leaves a T-junction; and a step of an unknown kind, a fault in
+   the design. At `df5c970` it prints
+   `RangeError RangeError RangeError Error Error Error Error`)
+2. Do: `grep -o "instanceof [A-Za-z]*\|constructor ===\|\.name ===" docs/src/gameplay/graph.js; grep -c "throw error;" docs/src/gameplay/graph.js`
+   Expect: `instanceof FoldRefusal`, then `1` (the file's one test of
+   an error is for a FoldRefusal, and cutIfAllowed() throws every other
+   error on)
 3. Do: `node --input-type=module -e 'import { DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; for (const design of DESIGNS) { const g = buildGraph(cutSheet(design)); const n = g.nodes; const count = (id) => (id === g.goalNodeId ? 1 : 0) + n[id].edges.reduce((sum, e) => sum + count(e.nodeId), 0); console.log(g.designId.slice(0, 10), g.foldCount, n.length, n.reduce((sum, { edges }) => sum + edges.length, 0), n.filter(({ isLive }) => isLive).length, n.filter(({ edges, id }) => edges.length === 0 && id !== g.goalNodeId).length, n.filter(({ isLive }) => isLive).flatMap(({ edges }) => edges).filter(({ nodeId }) => !n[nodeId].isLive).length, count(0), g.goalNodeId, g.radiusMeters.toFixed(4)); }'`
    Expect: six lines, each a design's id cut to ten characters, then
    its folds, states, edges, live states, dead ends, traps, orders,
@@ -223,21 +239,24 @@ The target the paper rests at when the page loads:
    dart: its lines fade in, seven folds unfold, the lines fade out, the
    sheets swap with no stretch, and the lines fade in; then to the
    yacht's: a fade out, the stretch and turn, and a fade in)
-3. Do: `node --input-type=module -e 'import { DESIGNS, GAMEPLAY_DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { maxPaperRadius } from "./docs/src/fold/pose.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; const own = Math.max(...DESIGNS.map((d) => maxPaperRadius(cutSheet(d)))); const all = Math.max(own, ...GAMEPLAY_DESIGNS.map((d) => buildGraph(cutSheet(d)).radiusMeters)); console.log(own.toFixed(4), all.toFixed(4));'; grep -c "buildGraph\|gameplaySheetId\|cutPath" docs/src/main.js`
-   Expect: `0.1189 0.1189`, then a count of at least `3` (the radius is
-   the heart's with the graphs counted; `main.js` uses all three
-   functions)
+3. Do: `node --input-type=module -e 'import { DESIGNS, GAMEPLAY_DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { maxPaperRadius } from "./docs/src/fold/pose.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; const own = Math.max(...DESIGNS.map((d) => maxPaperRadius(cutSheet(d)))); const all = Math.max(own, ...GAMEPLAY_DESIGNS.map((d) => buildGraph(cutSheet(d)).radiusMeters)); console.log(own.toFixed(4), all.toFixed(4));'; for name in buildGraph cutPath gameplaySheetId; do grep -c "$name(" docs/src/main.js; done`
+   Expect: `0.1189 0.1189`, then three counts, each at least `1` (the
+   radius is the heart's with the graphs counted; `main.js` calls all
+   three functions)
 4. Do: `node --check docs/src/gameplay/path.js && node --check docs/src/main.js; awk 'length > 80 { print FILENAME ":" FNR }' docs/src/gameplay/path.js docs/src/main.js`
    Expect: prints nothing.
 
 ### Step 3: The mode and the Gameplay designs in the toolbar
 
-- Changes `docs/index.html` (the `gameplay` mode radio, the
-  `.gameplay-designs` group, the pattern group and the sandbox bar
-  `hidden` at load), `docs/src/ui/mode-radios.js` (three modes, the
-  boot mode), `docs/src/ui/controls-toggle.js` (focus per mode) and
+- Changes `docs/index.html` (the `gameplay` mode radio, checked in
+  place of `sandbox`; the `.gameplay-designs` group; and the pattern
+  group `hidden` at load, as the designs group, the sandbox bar and
+  "Fast Fold" already are), `docs/src/ui/mode-radios.js` (three modes,
+  the boot mode), `docs/src/ui/controls-toggle.js` (focus per mode),
   `docs/src/main.js` (the mode's value, its wiring, the boot state and
-  the file's opening comment), and adds
+  the file's opening comment), and the comments that name two modes in
+  `docs/styles/main.css` (the groups of choices) and
+  `docs/src/ui/fold-lines-toggle.js` (setForcedOn()), and adds
   `docs/src/ui/gameplay-radios.js`, per Decisions 1 to 3 and 6 to 10.
 - It should show the three mode radios, Gameplay checked at load, and
   the four Gameplay designs in place of the patterns and the
@@ -247,7 +266,7 @@ The target the paper rests at when the page loads:
   (Manual QA 1).
 - It should bring the paper to each Gameplay design's flat sheet, in
   its shape, pose, lean and colour, with its whole crease pattern
-  printed on both sides (Manual QA 2, 3).
+  printed on both sides (Agent QA 2; Manual QA 2, 3).
 - It should fold the checked Presentation design on choosing
   Presentation Mode, show the checked pattern on choosing Sandbox
   Mode, and return to the checked Gameplay design's flat sheet on
@@ -259,7 +278,7 @@ The target the paper rests at when the page loads:
   Gameplay design (Manual QA 7, 8).
 - It should leave Sandbox Mode and Presentation Mode behaving as
   before, apart from the boot (Manual QA 4, 5).
-- It should hold the mode as one value (Agent QA 2).
+- It should hold the mode as one value (Agent QA 3).
 
 **Agent QA**
 
@@ -267,10 +286,24 @@ The target the paper rests at when the page loads:
    Expect: `name="mode" value="presentation" name="mode" value="gameplay" checked name="mode" value="sandbox" name="gameplay-design" value="2f0a6b7e-3c1d-4e8f-9a2b-6c5d4e3f2a1b" checked name="gameplay-design" value="yacht" name="gameplay-design" value="mount-fuji" name="gameplay-design" value="paper-dart" `
    (whitespace is squeezed first, so an `<input>` wrapped one attribute
    per line still matches)
-2. Do: `grep -c "isSandbox" docs/src/main.js; grep -c '"gameplay"' docs/src/main.js docs/src/ui/mode-radios.js docs/src/ui/controls-toggle.js`
-   Expect: `0`, then a count of at least `1` for each of the three files
-   (at `d710f9d` the first prints `7`)
-3. Do: `for f in docs/src/ui/*.js docs/src/main.js; do node --check "$f"; done; awk 'length > 80 && !/data:image|aria-label="A sheet|aria-keyshortcuts=/ { print FILENAME ":" FNR }' docs/src/ui/*.js docs/src/main.js docs/styles/main.css docs/index.html`
+2. Do: `node --input-type=module -e 'import { GAMEPLAY_DESIGNS } from "./docs/src/designs/list.js"; import { PAPER_COLORS } from "./docs/src/scene/paper-colors.js"; import { connectGameplayRadios } from "./docs/src/ui/gameplay-radios.js"; const fake = (value) => ({ checked: false, on: {}, value, addEventListener(type, listener) { this.on[type] = listener; } }); const ids = GAMEPLAY_DESIGNS.map(({ id }) => id); let radios = ids.map(fake); globalThis.document = { querySelectorAll: () => radios }; const chosen = []; const checkedChoice = connectGameplayRadios(PAPER_COLORS, (choice) => chosen.push(choice)); const atLoad = radios.map(({ checked }) => checked).join(); radios[3].on.click(); radios[1].on.change(); radios.forEach((radio, i) => { radio.checked = i === 1; }); console.log(atLoad, checkedChoice().designId, chosen.every((c) => Object.isFrozen(c) && Object.isFrozen(c.target))); console.log(JSON.stringify(chosen)); const tryWith = (colors, values) => { radios = values.map(fake); try { connectGameplayRadios(colors, () => {}); return "none"; } catch (e) { return e.name; } }; console.log(tryWith(PAPER_COLORS, [...ids, "heart"]), tryWith({}, ids), tryWith(PAPER_COLORS, ids.slice(1)), tryWith(PAPER_COLORS, ids));'`
+   Expect: three lines:
+   - `true,false,false,false yacht true` (the blintz checked at
+     connection; the checked radio's choice read back; every choice
+     frozen, its target too)
+   - `[{"colorId":"orange","designId":"paper-dart","target":{"position":0,"sheetId":"gameplay:paper-dart"}},{"colorId":"blue","designId":"yacht","target":{"position":0,"sheetId":"gameplay:yacht"}}]`
+     (a `click` on the dart's radio and a `change` on the yacht's)
+   - `Error Error Error none` (a radio naming the heart, no colours, no
+     blintz radio, then the four as on the page)
+
+   Plain objects stand in for the page: connectGameplayRadios() reads
+   only `document.querySelectorAll()` and each radio's `value`,
+   `checked` and addEventListener(), as connectPatternRadios() does.
+3. Do: `grep -c "isSandbox" docs/src/main.js; grep -c '"gameplay"\|^ *gameplay:' docs/src/main.js docs/src/ui/mode-radios.js docs/src/ui/controls-toggle.js`
+   Expect: `0`, then a count of at least `1` for each of the three files,
+   the mode named as a string or as an object's key (at `d710f9d` the
+   first prints `7`)
+4. Do: `for f in docs/src/ui/*.js docs/src/main.js; do node --check "$f"; done; awk 'length > 80 && !/data:image|aria-label="A sheet|aria-keyshortcuts=/ { print FILENAME ":" FNR }' docs/src/ui/*.js docs/src/main.js docs/styles/main.css docs/index.html`
    Expect: prints nothing (the favicon's data URL and the canvas's
    `aria-keyshortcuts` and `aria-label` are the three lines no wrap can
    shorten, so the `awk` skips them)
@@ -304,12 +337,14 @@ console, and hard-reload (Shift+Cmd+R).
      side and leans about 15° anticlockwise, and five printed line
      segments fade in, dashed and dash-dot-dot. The other side is blue,
      with the same five lines, each of the opposite kind.
-3. **Do:** click "Mount Fuji", then "Paper Dart".
-   - **Expect:** for each, the lines fade out, the sheet turns to its
-     coloured side, upright, fades to green, then to orange, and its
-     crease pattern fades in: Mount Fuji's level and slanted lines,
-     then the dart's fan of lines from the middle of the top edge. No
-     Fold Buttons appear, and a hover lights no line.
+3. **Do:** click "Mount Fuji", then, once it rests, "Paper Dart".
+   - **Expect:** for Mount Fuji, the lines fade out, the sheet turns to
+     its coloured side, upright, fades to green, and its level and
+     slanted lines fade in. For the dart, the lines fade out, the
+     sheet fades to orange with no stretch or turn, since the two
+     sheets share their shape and pose, and its fan of lines from the
+     middle of the top edge fades in. No Fold Buttons appear, and a
+     hover lights no line.
    - **Why:** folding arrives with Plan 24; a button here would be
      Sandbox Mode's code running on a design.
 4. **Do:** click "Presentation", wait for the paper to rest, then
@@ -354,9 +389,11 @@ console, and hard-reload (Shift+Cmd+R).
    record the same on the live site,
    `https://richplastow.com/pureland-simulator/`, which is `main`
    before this plan, and compare.
-   - **Expect:** the load's script time is longer than before by about
-     the time Plan 22's Manual QA 4 measured for the four graphs at the
-     same slowdown, and the first frame still shows the blintz at rest.
+   - **Expect:** the longest task here is longer than the live site's
+     by about the four graphs' build time at 4×, as the second run of
+     [Plan 22's Manual QA 4](./22-gameplay-graph.md#manual-qa)
+     prints it (run that snippet again here if its time was not
+     noted), and the first frame here shows the blintz at rest.
    - **Why:** the graphs are built at load on every device; this is
      the cost every later Gameplay design adds to. The measurement
      informs, and never gates.
@@ -392,3 +429,85 @@ yet, and no status, lives or Hint show: those arrive with Plans 24 and
   expectation in Step 1 was measured against a throwaway prototype of
   the change; the agent proposed the name FoldRefusal and which throws
   count as refusals.
+- **2026-11-23T15:54:34Z** — **reviewed**: no Major finding. Every
+  Step 1 and Step 2 Agent QA line, and the new Step 3 Agent QA 2,
+  passes as written against a throwaway prototype of FoldRefusal,
+  cutIfAllowed(), gameplaySheetId() and gameplay-radios.js over the
+  real engine; the search meets only the "moves nothing" and unmade
+  `{ movedBy }` refusals (49 on the dart, 36 on the heart, 1 on the
+  yacht). Mutation testing found five mutants the old Step 1 lines
+  passed (the stops-short and T-junction refusals left plain Errors,
+  every engine Error made a FoldRefusal, a catch that also takes a
+  TypeError, the rethrow dropped), so Step 1 Agent QA 1 gains three
+  cases and Agent QA 2 tests the catch exactly; all 13 now fail. Step 3
+  gains Agent QA 2, the radios' choices over stand-in DOM objects,
+  which catches all 14 of its mutants; the old 2 and 3 become 3 and 4,
+  the mode grep also taking an object key. Also fixed: Context names
+  the second departure from the research, Decision 3's own radios;
+  Decision 3 names the choice's fields and connectGameplayRadios()'s
+  arguments; Decision 6 stretches only where the sheets differ; Step 1
+  lists the doc comments of cutSheet() and cutPath(); Step 2 Agent QA 3
+  counts each function's call; Step 3's file list drops the sandbox
+  bar, already `hidden`, and adds the two-mode comments in `main.css`
+  and `fold-lines-toggle.js`; Step 1 criterion 1 reworded, Step 3
+  criteria 3 and 8 re-pointed; Manual QA 3 split per design, Manual
+  QA 9's Expect measures the longest task. No Three.js API named; no
+  texture colouring added. Timings not re-measured: load average 450.
+- **2026-11-23T16:05:50Z** — **implemented**: Steps 1 to 3, by
+  `/orchestrate-plan` Stage 2. Step 1: FoldRefusal exported from
+  `docs/src/fold/engine.js` and thrown at its three refusals,
+  `docs/src/gameplay/path.js`'s `{ movedBy }` refusal made one, and
+  cutIfAllowed() in `docs/src/gameplay/graph.js` catching it alone, with
+  the doc comments of cutSheet(), cutPath(), buildGraph() and
+  cutIfAllowed() to match. Step 2: gameplaySheetId() in `path.js`; in
+  `docs/src/main.js`, the four flat gameplay sheets in `sheets`, the four
+  graphs in `graphs`, the radius over both, and `sheetColorIds`, a colour
+  lookup by sheet id that replaces the `designs` map, so
+  writeSequenceState() colours a `gameplay:` sheet. Step 3: the
+  `gameplay` mode radio, checked, and the `.gameplay-designs` group in
+  `docs/index.html`, the pattern group `hidden`; three modes in
+  `docs/src/ui/mode-radios.js` and `docs/src/ui/controls-toggle.js`; the
+  new `docs/src/ui/gameplay-radios.js`; `mode` in place of `isSandbox` and
+  the boot on the blintz's gameplay sheet in `main.js`; the two-mode
+  comments in `docs/styles/main.css` and
+  `docs/src/ui/fold-lines-toggle.js`. Every Agent QA line failed first
+  for the expected reason, then passed as written; none edited. Manual
+  QA walked against the code and unchanged.
+- **2026-11-23T16:05:58Z** — **verified**: agent checks pass: 8 changed
+  modules parse, no line over 80 columns beyond the favicon's data URL and
+  the canvas's `aria-keyshortcuts` and `aria-label`, `/` and every changed
+  file served with status 200 (a server started for the check, then
+  stopped), vendored checksums match; browser not run.
+- **2026-11-23T16:11:40Z** — **quality-checked**:
+  Fixed: FoldRefusal's doc comment in
+  `docs/src/fold/engine.js` said every other throw "stays" a plain
+  Error, which describes the change rather than the code; it now says
+  "is" (first-run polish, comment only). Deferred: the three modes are
+  listed three times, in `MODE_GROUPS` (`mode-radios.js`),
+  `MODE_CHOICE_NAMES` (`controls-toggle.js`) and chooseMode()'s
+  switch, a structural choice to weigh when a fourth mode comes, not a
+  defect; the boot mode is written in `main.js` (`let mode`,
+  chooseMode("gameplay")) and in `mode-radios.js`, as Sandbox Mode's
+  was before, within Decisions 1, 2 and 8; chooseMode() assigns `mode`
+  before its `default: throw`, unreachable since connectModeRadios()
+  rejects any other value; a Gameplay choice's `designId` and
+  `graphs` are read by nothing yet, kept for Plans 24 and 25.
+  Verified fine: every pick, hover, press, Fold Button and Fast Fold
+  path in `main.js` is gated by canPick() or canLayOut(), both through
+  isSequenceAtRest()'s `mode === "sandbox"`, and Undo, Redo, Unfold,
+  Export and their shortcuts by the sandbox bar's `hidden`; `isSandbox`
+  had seven uses, all replaced; graph.js's catch is the only one over
+  the engine; the 14 sheet ids are distinct, so `sheetColorIds` loses
+  no colour; `.gameplay-designs` matches no `.designs` rule; Three.js
+  sweep: no geometry, material, texture or render target added, the
+  per-frame path adds only a keyed lookup in writeSequenceState(), no
+  motion or resize change, no Three.js API or addon added; mutation
+  testing on the real files: four gameplay-radios.js mutants (target
+  unfrozen, `change` listener dropped, first radio left unchecked,
+  position 1) and two path.js mutants (the unmade `{ movedBy }` a
+  RangeError again, a `gameplay-` prefix) each caught by Agent QA,
+  both files restored and checked by `shasum`; Manual QA 1 to 11
+  walked against the code, none drifted; agent checks pass; browser
+  not run.
+- **2026-11-23T19:20:25Z** — **done**: passed the Lead Developer’s manual
+  QA; moved to `plans/done/`.

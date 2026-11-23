@@ -35,7 +35,7 @@ folds, so a mistake is felt while it can still be remembered. Its
 graph's `radiusMeters` is judged too, against the 0.1189 m the page's
 camera frames today: `paperRadiusMeters` takes the largest of every
 offered graph's reach
-([Plan 23, Decision 5](../23-gameplay-mode.md#decisions)), so a maze
+([Plan 23, Decision 5](../../done/23-gameplay-mode.md#decisions)), so a maze
 that reaches further pulls the camera back, and the paper looks
 smaller, in every mode.
 

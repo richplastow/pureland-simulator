@@ -3,7 +3,7 @@
  * A path of a design's folds, made in any order, cut as a gameplay sheet.
  */
 
-import { cutSheet } from "../fold/engine.js";
+import { cutSheet, FoldRefusal } from "../fold/engine.js";
 
 /** #### Cuts a path of a design's folds into a sheet, as a design of its own
  * - Builds the design `{ aspect, id, steps }`, one fold step per fold in
@@ -19,10 +19,11 @@ import { cutSheet } from "../fold/engine.js";
  *   renamed to that fold's place in the path. A `{ heldBy }` naming a fold
  *   not yet in the path becomes `"all"`, since nothing is yet moved by it.
  * - Throws a RangeError, before any fold runs, when a fold in the path is
- *   repeated or is not an index in `sheet.folds`, and when a `{ movedBy }`
- *   names a fold not yet in the path, since its paper is not there to
- *   move. Throws as cutSheet() does otherwise: when a fold moves nothing,
- *   say.
+ *   repeated or is not an index in `sheet.folds`: a fault in the caller.
+ * - Throws a FoldRefusal, before any fold runs, when a `{ movedBy }` names
+ *   a fold not yet in the path, since its paper is not there to move.
+ *   Throws as cutSheet() does otherwise: a FoldRefusal when a fold moves
+ *   nothing, say.
  * - The sheet then takes the design's `start` and `leanRadians`, so it
  *   sits in the design's starting pose, and prints the design's whole
  *   crease pattern, never only the creases the path makes.
@@ -71,6 +72,16 @@ export const cutPath = (sheet, path, isFinished) => {
   };
 };
 
+/** #### Returns the id of a design's gameplay sheet
+ * - `"gameplay:"` followed by the design's `id`, so the gameplay sheet
+ *   never shares the key of the design's own sheet in `main.js`'s
+ *   `sheets`: the stepper tells sheets apart by id, so carries the paper
+ *   from the finished design to its flat gameplay sheet by unfolding it.
+ * @param designId The design's `id`.
+ * @returns The gameplay sheet's id.
+ */
+export const gameplaySheetId = (designId) => `gameplay:${designId}`;
+
 /** #### Returns a fold's layer selection, renamed to places in the path
  * @param sheet The design's own sheet, with its `designId` and `folds`.
  * @param path Indices in `sheet.folds`, in the order folded.
@@ -88,7 +99,7 @@ const layersAt = (sheet, path, position) => {
   if (named !== -1) return { [key]: named };
   if (key === "heldBy") return "all";
 
-  throw new RangeError(
+  throw new FoldRefusal(
     `Fold ${path[position]} of design "${sheet.designId}" moves the ` +
       `paper of fold ${layers.movedBy}, which the path has not yet made`,
   );
