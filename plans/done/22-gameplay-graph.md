@@ -8,18 +8,18 @@ type: plan
 
 - The first of the four plans, 22 to 25, that build Basic Gameplay
   Mode, the game the
-  [Gameplay Mode research](./14-gameplay-mode-research.md) sets out and
-  its [likely plans](./14-gameplay-mode-research.md#8-likely-plans)
+  [Gameplay Mode research](../todo/14-gameplay-mode-research.md) sets out and
+  its [likely plans](../todo/14-gameplay-mode-research.md#8-likely-plans)
   order. This one delivers the pure maths: which designs the mode
   offers, a path of a design's folds cut as a sheet, and each design's
-  maze as a graph of states. [Plan 23](./23-gameplay-mode.md) puts the
-  mode on the page, [Plan 24](./24-gameplay-folds.md) folds it, and
-  [Plan 25](./25-gameplay-game.md) adds dead ends, lives, hints and
+  maze as a graph of states. [Plan 23](../todo/23-gameplay-mode.md) puts the
+  mode on the page, [Plan 24](../todo/24-gameplay-folds.md) folds it, and
+  [Plan 25](../todo/25-gameplay-game.md) adds dead ends, lives, hints and
   points.
 - Basic Gameplay Mode is the research's game at its smallest. Every
   fold line folds one way only, a mountain or a valley, so the order is
   the whole puzzle; plain lines and a choice of direction
-  ([the brief](./14-gameplay-mode-research.md#plain-lines-and-a-choice-of-direction))
+  ([the brief](../todo/14-gameplay-mode-research.md#plain-lines-and-a-choice-of-direction))
   wait for a later batch.
 - Nothing visible changes: no page module imports the new files, which
   the Agent QA proves, so Presentation Mode and Sandbox Mode run
@@ -28,7 +28,7 @@ type: plan
   be known, state by state, before a Fold Button can be offered or a
   dead end judged.
 - Its terms are the research's
-  ([Results](./14-gameplay-mode-research.md#results)): a **live** state
+  ([Results](../todo/14-gameplay-mode-research.md#results)): a **live** state
   can still reach the goal and a **doomed** one cannot; a **dead end**
   is a state, not the goal, with no fold available; a **trap** is a fold
   from a live state into a doomed one.
@@ -74,12 +74,15 @@ type: plan
    - **The heart is left out** as long and flat: eleven folds, 2,268
      orders and not one trap.
    - More playable designs are a
-     [backlog item](./backlog/20261123-more-gameplay-designs.md).
+     [backlog item](../todo/backlog/20261123-more-gameplay-designs.md).
 2. **The engine stays closed; a path is a design.** As
-   [Plan 15's Decision 1](../done/15-lattice-engine.md#decisions) has a
+   [Plan 15's Decision 1](./15-lattice-engine.md#decisions) has a
    session cut, cutPath(sheet, path, isFinished) in the new
    `docs/src/gameplay/path.js` builds a design of `{ aspect, id, steps }`
    with no `start` and no turn-overs, and cuts it with cutSheet().
+   - Its arguments run as the call reads, the sheet, then the path,
+     then whether it is finished, rather than A-Z, as foldAt()'s do in
+     `docs/src/sandbox/session.js`.
    - `sheet` is the design's own, from cutSheet(design), whose `folds`
      are already in the front's terms, so nothing is read through a view
      frame twice. `path` lists indices in `sheet.folds`, each at most
@@ -95,7 +98,7 @@ type: plan
      whole `creaseLines`, never the creases its path happens to make;
      and `finishedPosition`, `path.length` if `isFinished` and null
      otherwise, so the stepper fades its lines out only at the goal
-     ([the research](./14-gameplay-mode-research.md#4-where-a-gameplay-sheet-finishes)).
+     ([the research](../todo/14-gameplay-mode-research.md#4-where-a-gameplay-sheet-finishes)).
      Its `designId` is the design's.
    - The stage centres come from the unrolled frame. That matches the
      design's own for a start that is only a side, as all four Gameplay
@@ -123,7 +126,7 @@ type: plan
    dart's centre fold is `"both-sides"` in Presentation Mode, which
    stands the folded dart edge-on to the viewer, off the folded plane;
    but the Sandbox's picking, lit lines and Fold Buttons, which
-   [Plan 24](./24-gameplay-folds.md) reuses, all read the paper in that
+   [Plan 24](../todo/24-gameplay-folds.md) reuses, all read the paper in that
    plane (`docs/src/input/pick.js`: "At rest every flat fold lies in
    that plane", read 2026-11-23). So in Gameplay Mode the dart folds in half as on a
    table, its left half over its right, its wing lines facing the
@@ -131,7 +134,7 @@ type: plan
    the viewer, to be turned by a drag. The states and the goal are
    unchanged, since `turns` moves no face in the folded plane.
 4. **A fold is available under the printed rule**
-   ([working assumption 1](./14-gameplay-mode-research.md#working-assumptions)):
+   ([working assumption 1](../todo/14-gameplay-mode-research.md#working-assumptions)):
    it makes at least one crease, and every crease it makes lies, end to
    end, along the creases the design prints for that fold, which may be
    several collinear pieces. The creases printed for fold *f* are those
@@ -148,7 +151,7 @@ type: plan
    paper beside its hinge moved. Under it, a dart's wing folded before
    the centre fold is a dead end at once, and the dart's orders are the
    twelve the
-   [brief's own description](./14-gameplay-mode-research.md#the-traps-design-by-design)
+   [research's own description](../todo/14-gameplay-mode-research.md#the-traps-design-by-design)
    gives: the corners either way, each edge after its corner, the
    centre, then the wings either way. Without it, ten more orders fold a
    wing before the centre (22 in all, measured).
@@ -156,11 +159,12 @@ type: plan
    the same folds made, and faces that pair off one for one, each pair
    with the same corners in the folded plane, to within
    `TOLERANCE_METERS` and in the same cyclic order, the same layer, and
-   the same folds having moved it. Compared, not rounded into a key: a
-   rounding boundary falls on some binary fraction of the sheet at any
-   precision, and would split one state into two, one of them wrongly
-   not the goal. The research's notion of one state
-   ([Measurements](./14-gameplay-mode-research.md#measurements)) plus
+   the same folds, by their index in the design, having moved it.
+   Compared, not rounded into a key: a rounding boundary falls on some
+   binary fraction of the sheet at any precision, and would split one
+   state into two, one of them wrongly not the goal. The research's
+   notion of one state
+   ([Measurements](../todo/14-gameplay-mode-research.md#measurements)) plus
    the moving folds, which decide what a later `{ movedBy }` selects;
    adding them changes no figure (measured).
 7. **The graph is the whole maze, doomed states included.**
@@ -179,13 +183,13 @@ type: plan
      maxPaperRadius() of every edge's cut.
    - The research proposed building only the live states and judging
      the rest as the player goes
-     ([the live graph](./14-gameplay-mode-research.md#2-the-live-graph-and-availability-on-the-fly)),
+     ([the live graph](../todo/14-gameplay-mode-research.md#2-the-live-graph-and-availability-on-the-fly)),
      because a choice of direction would double every doomed subtree.
      With one-way lines the whole graph is at most 86 states and builds
      in 44 ms (measured), so every judgement is a lookup. It stays
      enumerable if a choice of direction arrives: a wrong direction is a
      dead end at once
-     ([the research](./14-gameplay-mode-research.md#6-the-game-layer)),
+     ([the research](../todo/14-gameplay-mode-research.md#6-the-game-layer)),
      so it adds one leaf per edge, never a subtree.
 
    The paper dart's graph, its first node and the first two of that
@@ -275,10 +279,12 @@ type: plan
    Expect: `null 0 1 5 back 0.2531` (the yacht's flat gameplay sheet: never
    finished, no folds, one face, its five printed creases, white side
    up, leaning)
-4. Do: `node --input-type=module -e 'import { DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { cutPath } from "./docs/src/gameplay/path.js"; const sheet = cutSheet(DESIGNS.find((d) => d.id === "paper-dart")); for (const path of [[6], [5], [0, 0], [7]]) { try { console.log(cutPath(sheet, path, false).folds.map((f) => JSON.stringify(f.layers)).join()); } catch (e) { console.log(e.name); } }'`
-   Expect: four lines: `"all"`, `RangeError`, `RangeError`, `RangeError`
-   (the right wing alone folds every layer; the left wing needs the
-   centre fold first; a fold repeated; a fold the dart lacks)
+4. Do: `node --input-type=module -e 'import { DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { cutPath } from "./docs/src/gameplay/path.js"; const sheet = cutSheet(DESIGNS.find((d) => d.id === "paper-dart")); for (const path of [[6], [5, 4], [0, 0], [7], ["1"]]) { try { console.log(cutPath(sheet, path, false).folds.map((f) => JSON.stringify(f.layers)).join()); } catch (e) { console.log(e.name); } }'`
+   Expect: five lines: `"all"`, `RangeError`, `RangeError`,
+   `RangeError`, `RangeError` (the right wing alone folds every layer;
+   the left wing needs the centre fold before it, not after; a fold
+   repeated; a fold the dart lacks; and a fold named by a string, not an
+   index)
 5. Do: `node --check docs/src/gameplay/path.js && node --check docs/src/designs/list.js; awk 'length > 80 { print FILENAME ":" FNR }' docs/src/gameplay/path.js docs/src/designs/list.js`
    Expect: prints nothing.
 
@@ -286,12 +292,13 @@ type: plan
 
 - Adds `docs/src/gameplay/graph.js` (buildGraph()), per Decisions 4 to
   10.
-- It should find each design's states, edges, live states, dead ends,
-  traps and orders exactly as Decision 1's table has them, with the
-  goal where the design's own order leads (Agent QA 1).
+- It should find each Gameplay design's states, edges, live states,
+  dead ends, traps and orders exactly as Decision 1's table has them,
+  with the goal where the design's own order leads (Agent QA 1).
 - It should offer, at each state, only the folds the printed rule and
   the standing rule allow, so a wing folded before the dart's centre
-  fold is a dead end at once (Agent QA 2).
+  fold is a dead end at once, and a fold that makes no crease is never
+  offered (Agent QA 2, 5).
 - It should give each edge its Fold Line, its fold's type and angle,
   and the node it leads to (Agent QA 3).
 - It should measure how far the paper reaches over the whole graph,
@@ -300,7 +307,7 @@ type: plan
 - It should throw, naming the design and the fold, when a design's own
   order cannot be made (Agent QA 5).
 - It should change nothing the page loads (Agent QA 6; Manual QA 1 to
-  3).
+  3, 5).
 
 **Agent QA**
 
@@ -319,21 +326,30 @@ type: plan
    trap; after it, where both wings are right; after a wing first, a
    dead end; after the centre first; then the flat Mount Fuji, Fuji
    after the snow, and after the middle)
-3. Do: `node --input-type=module -e 'import { GAMEPLAY_DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; const g = buildGraph(cutSheet(GAMEPLAY_DESIGNS[3])); const at = (path) => path.reduce((id, f) => g.nodes[id].edges.find((e) => e.fold === f).nodeId, 0); const mm = ([x, y]) => [x, y].map((v) => (Math.round(v * 1e4) / 10 + 0).toFixed(1)).join(); for (const e of [...g.nodes[at([0, 1, 2, 3, 4])].edges, g.nodes[at([0])].edges[1]]) console.log(e.fold, e.type, (e.targetRadians / Math.PI).toFixed(2), mm(e.from), mm(e.to), e.nodeId, Object.keys(e).join());'`
-   Expect: three lines:
+3. Do: `node --input-type=module -e 'import { DESIGNS, GAMEPLAY_DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; const g = buildGraph(cutSheet(GAMEPLAY_DESIGNS[3])); const yacht = buildGraph(cutSheet(GAMEPLAY_DESIGNS[1])); const heart = buildGraph(cutSheet(DESIGNS.find((d) => d.id === "heart"))); const at = (graph, path) => graph.nodes[path.reduce((id, f) => graph.nodes[id].edges.find((e) => e.fold === f).nodeId, 0)]; const mm = ([x, y]) => [x, y].map((v) => (Math.round(v * 1e4) / 10 + 0).toFixed(1)).join(); for (const e of [...at(g, [0, 1, 2, 3, 4]).edges, at(g, [0]).edges[1], at(heart, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).edges[0], at(yacht, [0]).edges[0]]) console.log(e.fold, e.type, (e.targetRadians / Math.PI).toFixed(2), mm(e.from), mm(e.to), e.nodeId, Object.keys(e).join());'`
+   Expect: five lines:
    `5 valley 0.50 0.0,75.0 29.8,-75.0 73 fold,from,nodeId,targetRadians,to,type`,
-   `6 mountain 0.50 0.0,75.0 29.8,-75.0 74 fold,from,nodeId,targetRadians,to,type`
+   `6 mountain 0.50 0.0,75.0 29.8,-75.0 74 fold,from,nodeId,targetRadians,to,type`,
+   `2 valley 1.00 -62.1,-75.0 0.0,75.0 8 fold,from,nodeId,targetRadians,to,type`,
+   `10 valley 1.00 -39.8,66.3 -13.3,66.3 64 fold,from,nodeId,targetRadians,to,type`
    and
-   `2 valley 1.00 -62.1,-75.0 0.0,75.0 8 fold,from,nodeId,targetRadians,to,type`
+   `1 mountain 1.00 -12.9,-75.0 -75.0,75.0 2 fold,from,nodeId,targetRadians,to,type`
    (the two wings share one line once the dart is folded in half, a
    valley and a mountain, each a quarter turn; the left edge's line
-   runs the sheet's height, in millimetres)
-4. Do: `node --input-type=module -e 'import { DESIGNS, GAMEPLAY_DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { maxPaperRadius } from "./docs/src/fold/pose.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; const graphs = GAMEPLAY_DESIGNS.map((d) => buildGraph(cutSheet(d))); const g = graphs[3]; console.log(graphs.map((x) => x.radiusMeters.toFixed(4)).join(" "), Math.max(...DESIGNS.map((d) => maxPaperRadius(cutSheet(d)))).toFixed(4), [g, g.nodes, g.nodes[0], g.nodes[0].edges, g.nodes[0].edges[0], g.nodes[0].edges[0].from, g.nodes[1].path].every(Object.isFrozen), Object.keys(g).join(), Object.keys(g.nodes[0]).join());'`
+   runs the sheet's height, in millimetres; the heart's last fold, a
+   tip whose line runs on along the other tip's fold, made already,
+   spans only the tip it moves; and the yacht's second fold, which moves
+   only the flap its first turned face down, spans its whole line, in
+   the fold's own direction)
+4. Do: `node --input-type=module -e 'import { DESIGNS, GAMEPLAY_DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { maxPaperRadius } from "./docs/src/fold/pose.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; const graphs = GAMEPLAY_DESIGNS.map((d) => buildGraph(cutSheet(d))); const g = graphs[3]; console.log(graphs.map((x) => x.radiusMeters.toFixed(4)).join(" "), Math.max(...DESIGNS.map((d) => maxPaperRadius(cutSheet(d)))).toFixed(4), [g, g.nodes, g.nodes[0], g.nodes[0].edges, g.nodes[0].edges[0], g.nodes[0].edges[0].from, g.nodes[0].edges[0].to, g.nodes[1].path].every(Object.isFrozen), Object.keys(g).join(), Object.keys(g.nodes[0]).join());'`
    Expect: `0.1061 0.1069 0.1090 0.1124 0.1189 true designId,foldCount,goalNodeId,nodes,radiusMeters edges,id,isLive,path`
-5. Do: `node --input-type=module -e 'import { DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; const sheet = cutSheet(DESIGNS.find((d) => d.id === "paper-dart")); try { buildGraph({ ...sheet, creaseLines: sheet.creaseLines.slice(0, 2) }); } catch (e) { console.log(e.message.includes("paper-dart"), /\b2\b/.test(e.message)); }'`
-   Expect: `true true` (with the dart's printed creases cut to its two
-   corners', its own order stops at fold 2, the left edge, and the
-   error names both)
+5. Do: `node --input-type=module -e 'import { DESIGNS } from "./docs/src/designs/list.js"; import { createFold } from "./docs/src/designs/steps.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; const sheet = cutSheet(DESIGNS.find((d) => d.id === "paper-dart")); const edgeFold = cutSheet({ aspect: 1, id: "edge-fold", steps: [createFold([-0.075, 0.075], "all", [-0.075, -0.075], "valley")] }); for (const [bad, fold] of [[{ ...sheet, creaseLines: sheet.creaseLines.slice(0, 2) }, /\b2\b/], [edgeFold, /\b0\b/]]) { try { buildGraph(bad); console.log("built"); } catch (e) { console.log(e.message.includes(bad.designId), fold.test(e.message)); } }'`
+   Expect: two lines, each `true true` (with the dart's printed creases
+   cut to its two corners', its own order stops at fold 2, the left
+   edge, and the error names both; and a sheet whose one fold runs
+   along its own left edge turns the whole sheet over and makes no
+   crease, so that fold is never available and the error names fold
+   0)
 6. Do: `git status --porcelain docs | sort; node --check docs/src/gameplay/graph.js; awk 'length > 80 { print FILENAME ":" FNR }' docs/src/gameplay/graph.js; grep -rln "gameplay/" docs/src docs/index.html | grep -v "^docs/src/gameplay/"`
    Expect: ` M docs/src/designs/list.js` and `?? docs/src/gameplay/`, then
    nothing more: no module outside `docs/src/gameplay/` imports the new
@@ -377,6 +393,12 @@ console, and hard-reload (Shift+Cmd+R).
    - **Why:** Plan 23 builds these four graphs at load, on every
      device, so this is the baseline its load time is judged against.
      The measurement informs, and never gates.
+5. **Do:** set the CPU back to no throttling, then, in device mode,
+   choose a phone such as iPhone 12 Pro (390 × 844), reload, and click
+   "Presentation", then "Paper Dart".
+   - **Expect:** Sandbox Mode's blue square shows on load, and the dart
+     folds as on the desktop, still standing edge-on as it folds in
+     half, with no errors or warnings in the console.
 
 ## Audit
 
@@ -389,3 +411,63 @@ console, and hard-reload (Shift+Cmd+R).
   (Decision 3); the standing rule (Decision 5); states compared within
   a tolerance, with the moving folds (Decision 6); and the whole graph
   built, not the live states alone (Decision 7).
+- **2026-11-23T13:22:00Z** — **reviewed**: no Major finding. Every Agent
+  QA line passed against path.js and graph.js written afresh from the
+  Decisions over the real engine, and the JSON examples matched; of 46
+  mutations, five went uncaught and now fail a line: Step 1 Agent QA 4
+  folds the left wing before the centre fold, not alone; Step 2 Agent
+  QA 3 adds the heart's last tip, Agent QA 4 checks `to` frozen, and
+  Agent QA 5 adds a fold that makes no crease. Eight more change no
+  figure or line on any of the six designs (the moving folds, rounding
+  or a looser tolerance, sheet for placed corners, corner order, the
+  printed filter's ends and bounds, the stage the crossing is read at),
+  so no line over them can fail. Fixed: Decision 2 says why cutPath()'s
+  arguments are not A-Z; Decision 5 credits the research, not the
+  brief; Decision 6 names the moving folds by design index; Step 2's
+  first two criteria reworded and its last gains Manual QA 5, a phone.
+  Every graph edge posed at rest and part-way through its fold: no
+  clash at rest or on a live path; in ten doomed dart paths a wing
+  passes through a flap it does not move, part-way, with or without
+  Decision 3, which is the engine's layer selection, left for Plan 24.
+- **2026-11-23T13:27:49Z** — **implemented**: Steps 1 and 2.
+  `docs/src/designs/list.js` gains `GAMEPLAY_DESIGNS`; new
+  `docs/src/gameplay/path.js` (cutPath()) and
+  `docs/src/gameplay/graph.js` (buildGraph()). Every Agent QA line
+  failed first for the expected reason (missing export, missing module),
+  then passed as written: Step 1 lines 1 to 5, Step 2 lines 1 to 6. The
+  six designs' graphs match Decision 1's table and the prototype's
+  output exactly, and the Decision 2 and 7 examples match. Beyond the
+  Decisions: cutPath() also throws a RangeError for a fold index that is
+  not a whole number; buildGraph() treats a plain Error or a RangeError
+  from cutPath() as the engine's refusal and throws on any other error,
+  and only "moves nothing" and an unmade `{ movedBy }` occur over the six
+  designs. Agent QA and Manual QA unchanged.
+- **2026-11-23T13:28:30Z** — **verified**: agent checks pass: 3 changed
+  modules parse, no line over 80 columns, `/` and every changed file
+  served with 200 by a server started for the check and stopped, vendored
+  checksums match; browser not run.
+- **2026-11-23T13:33:42Z** — **quality-checked**: Fixed: two QA gaps
+  found by mutation, each a mutant every line passed: dropping
+  `nextAlong` from edgeOf()'s `min` collapses the yacht's live second
+  fold, `{ movedBy: 0 }`, which moves only face-down paper, to a point,
+  so Step 2 Agent QA 3 gains that edge as a fifth line; dropping
+  cutPath()'s whole-number check lets `"1"` cut as fold 1, so Step 1
+  Agent QA 4 gains `["1"]` as a fifth path; edgeOf()'s arguments put
+  A-Z (`nodeId` before `stage`) and its "Compared at" bullet reworded to
+  "Read in the folded plane at", in graph.js, all six graphs unchanged.
+  Deferred: cutIfAllowed() also takes a native RangeError, or
+  cutPath()'s own index RangeError, as a refusal, though buildGraph()
+  never passes a bad index; telling them apart needs an error the
+  engine or cutPath() marks, and Decision 2 and Step 1 Agent QA 4 fix
+  the RangeError; list.js has no `@fileoverview`, which predates this
+  plan. Verified fine: every Agent QA line passes; 21 mutants on
+  path.js and graph.js, 17 caught, and four equivalent on all six
+  designs (catch-all refusal, the moving folds, corner order, the stage
+  the crossing is read at, up to the sign of zero); layersAt() and
+  cutIfAllowed() keep cutPath()'s argument order (Decision 2); helpers
+  A-Z; imports A-Z; doc comments in shape; freezing; no `three`, DOM,
+  per-frame path, GPU resource or resize touched, so no Three.js sweep;
+  nothing the page loads imports `gameplay/`; agent checks pass.
+- **2026-11-23T13:50:04Z** — **done**: the Lead Developer’s manual QA
+  passed; moved from `plans/todo/` after an unattended
+  `/orchestrate-plan` run.

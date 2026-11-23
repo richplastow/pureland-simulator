@@ -7,7 +7,7 @@ type: backlog
 ## Problem
 
 Basic Gameplay Mode offers four designs
-([Plan 22, Decision 1](../22-gameplay-graph.md#decisions)), and only two
+([Plan 22, Decision 1](../../done/22-gameplay-graph.md#decisions)), and only two
 of them are mazes: the blintz and the yacht are lessons with no wrong
 press, Mount Fuji has two traps, and the paper dart alone is a full
 maze. A player finishes all four in a few minutes. The
@@ -28,7 +28,7 @@ game.
 A design's maze can be measured before its page work is done: once its
 folds are written as a design file, buildGraph() over its sheet gives
 its states, traps and dead ends in milliseconds, as
-[Plan 22](../22-gameplay-graph.md) measures the first four. A good
+[Plan 22](../../done/22-gameplay-graph.md) measures the first four. A good
 maze, by the paper dart's example, has five to eight folds, traps at
 several states, and every trap's nearest dead end within two further
 folds, so a mistake is felt while it can still be remembered.

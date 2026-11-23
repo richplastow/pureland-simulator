@@ -25,7 +25,7 @@ type: plan
   reusing Sandbox Mode's picking, lit lines and Fold Buttons
   ([Plan 17](../done/17-sandbox-folds.md),
   [Plan 18](../done/18-fast-fold.md)) over the graph of
-  [Plan 22](./22-gameplay-graph.md). It takes up the one-button line
+  [Plan 22](../done/22-gameplay-graph.md). It takes up the one-button line
   that
   [Plan 18's Decision 18](../done/18-fast-fold.md#decisions) recorded
   for it.
@@ -132,7 +132,7 @@ type: plan
    edges.** `main.js` finds a rest state per mode. In Gameplay Mode:
    - the lines are openEdges() at the paper's position, each edge the
      line itself, with its `from` and `to`
-     ([Plan 22, Decision 8](./22-gameplay-graph.md#decisions)), in fold
+     ([Plan 22, Decision 8](../done/22-gameplay-graph.md#decisions)), in fold
      order;
    - a line's limits are its fold's `targetRadians` for its own `type`
      and 0 for the other, so its pair hides the other button, as a
@@ -142,7 +142,7 @@ type: plan
      come from the gameplay sheet as they do from a sandbox sheet,
      through placedFaces(), litSegments() and pickSpans();
    - there is no lattice, no hinge rule and no sweep test:
-     [Plan 22's standing rule](./22-gameplay-graph.md#decisions) already
+     [Plan 22's standing rule](../done/22-gameplay-graph.md#decisions) already
      keeps every flat fold away from a standing flap.
 
    Sandbox Mode's rest state is unchanged, and Presentation Mode still
@@ -495,7 +495,7 @@ step 2.
 - The finished dart rests on its side, one wing towards the viewer,
   where Presentation Mode shows it from above: in Gameplay Mode the
   sheet folds in half as on a table
-  ([Plan 22, Decision 3](./22-gameplay-graph.md#decisions)).
+  ([Plan 22, Decision 3](../done/22-gameplay-graph.md#decisions)).
 - A wrong order ends with no buttons and no message, and nothing says
   which folds are right: the game is Plan 25's.
 - On a phone a crowded line may show no button until it is tapped.

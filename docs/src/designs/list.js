@@ -33,3 +33,19 @@ export const DESIGNS = Object.freeze([
   HEART,
   BLINTZ,
 ]);
+
+/** #### The designs Basic Gameplay Mode offers, easiest first
+ * - The blintz, whose corners fold in any order; the yacht, whose folds
+ *   come in one order only; Mount Fuji, the first maze, with two traps;
+ *   and the paper dart, the real maze. The pencil and the heart are left
+ *   out: the pencil's dead ends come too long after the mistake, and the
+ *   heart is long, with no trap.
+ * - Each is the same frozen object as its entry in `DESIGNS`.
+ * - Frozen: copy it rather than change it.
+ */
+export const GAMEPLAY_DESIGNS = Object.freeze([
+  BLINTZ,
+  YACHT,
+  MOUNT_FUJI,
+  PAPER_DART,
+]);

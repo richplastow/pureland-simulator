@@ -7,7 +7,7 @@ type: plan
 ## Context
 
 - The second of the four Basic Gameplay Mode plans, after
-  [Plan 22](./22-gameplay-graph.md), whose designs, sheets and graphs it
+  [Plan 22](../done/22-gameplay-graph.md), whose designs, sheets and graphs it
   puts on the page, and before [Plan 24](./24-gameplay-folds.md), which
   folds them. It delivers the mode itself: a third mode radio, the
   Gameplay designs' own radios, each design's flat sheet printed with
@@ -98,7 +98,7 @@ type: plan
    25. `paperRadiusMeters` becomes the largest of the designs' own
    sheets' radius and the graphs' `radiusMeters`: still 0.1189 m, the
    heart's, so the camera, the lights and the bounding sphere do not
-   move ([Plan 22, Decision 10](./22-gameplay-graph.md#decisions)). The
+   move ([Plan 22, Decision 10](../done/22-gameplay-graph.md#decisions)). The
    four build in about 50 ms in Node on the Lead Developer's Mac
    (measured 2026-11-23); Manual QA 9 measures the load in a browser.
 6. **Choosing Gameplay Mode, or a Gameplay design, sets the target**

@@ -23,7 +23,7 @@ type: plan
   design starting afresh when the lives run out
   ([Q15](./14-gameplay-mode-briefs.md#q15)).
 - It judges by lookup in the graph of
-  [Plan 22](./22-gameplay-graph.md), which knows every state a design
+  [Plan 22](../done/22-gameplay-graph.md), which knows every state a design
   can reach and whether the goal can still be reached from it.
 - Needed because Plan 24's folding has no stakes: a wrong order ends
   in silence, and nothing rewards the right one.
