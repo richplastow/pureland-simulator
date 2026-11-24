@@ -8,7 +8,7 @@ type: plan
 
 - The third of the four Basic Gameplay Mode plans, after
   [Plan 23](./23-gameplay-mode.md), whose flat sheets it folds, and
-  before [Plan 25](../todo/25-gameplay-game.md), which turns the folding into
+  before [Plan 25](./25-gameplay-game.md), which turns the folding into
   a game. It delivers the folding: one Fold Button on every fold the
   sheet can make, a press that folds at the design's own angle, Undo,
   Redo and Unfold with their shortcuts, the keyboard, and each fold's

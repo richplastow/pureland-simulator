@@ -1,29 +1,29 @@
 ---
 title: Dead ends, lives, hints and points
-description: Makes the folding a game: a press into a dead end costs a life and closes that way, a Hint points to a right fold or back to the wrong turn, and the goal scores points.
+description: "Makes the folding a game: a press into a dead end costs a life and closes that way, a Hint points to a right fold or back to the wrong turn, and the goal scores points."
 type: plan
 ---
 
 ## Context
 
 - The last of the four Basic Gameplay Mode plans, after
-  [Plan 24](../done/24-gameplay-folds.md), whose folding it judges. It
+  [Plan 24](./24-gameplay-folds.md), whose folding it judges. It
   delivers the game: dead ends that cost a life and close behind the
   player, three lives and one hint per design, a Hint button, points at
   the goal, and a Next button to the next design, with every outcome
   said through Plan 24's status line.
 - It implements the brief's
-  [Dead ends and lives](./14-gameplay-mode-research.md#dead-ends-and-lives),
-  [Hints](./14-gameplay-mode-research.md#hints) and
-  [maze](./14-gameplay-mode-research.md#the-maze), as the research's
-  [game layer](./14-gameplay-mode-research.md#6-the-game-layer) worked
+  [Dead ends and lives](../todo/14-gameplay-mode-research.md#dead-ends-and-lives),
+  [Hints](../todo/14-gameplay-mode-research.md#hints) and
+  [maze](../todo/14-gameplay-mode-research.md#the-maze), as the research's
+  [game layer](../todo/14-gameplay-mode-research.md#6-the-game-layer) worked
   them out, under two of its rulings: every dead end is reported alike
-  ([Q12](./14-gameplay-mode-briefs.md#q12)), and lives, hints and points
+  ([Q12](../todo/14-gameplay-mode-briefs.md#q12)), and lives, hints and points
   are all per design, three lives and one hint to start, with the
   design starting afresh when the lives run out
-  ([Q15](./14-gameplay-mode-briefs.md#q15)).
+  ([Q15](../todo/14-gameplay-mode-briefs.md#q15)).
 - It judges by lookup in the graph of
-  [Plan 22](../done/22-gameplay-graph.md), which knows every state a design
+  [Plan 22](./22-gameplay-graph.md), which knows every state a design
   can reach and whether the goal can still be reached from it.
 - Needed because Plan 24's folding has no stakes: a wrong order ends
   in silence, and nothing rewards the right one.
@@ -110,7 +110,7 @@ type: plan
    run of right folds would say the run was right.
 6. **A closed fold is not offered.** `main.js`'s rest state already
    reads openEdges()
-   ([Plan 24, Decision 4](../done/24-gameplay-folds.md#decisions)), so a fold
+   ([Plan 24, Decision 4](./24-gameplay-folds.md#decisions)), so a fold
    into a closed state shows no Fold Button, lights nothing and is
    skipped by Left and Right. Its printed line stays on the paper.
 7. **The gameplay bar** is a `<div class="gameplay-bar" role="group"
@@ -124,11 +124,15 @@ type: plan
      CSS plays as one pulse, growing to `--lives-pulse-scale: 1.4` and
      back over `--lives-pulse-duration: 0.4s`, both first guesses open
      to tuning; the mark is cleared on `animationend`, so the next loss
-     plays again. Under reduced motion the CSS plays nothing.
-8. **The bar and the status are written when a game starts, and each
-   time the paper comes to rest**, so a dead end's message and its
-   lost life arrive as the fold lands, not as the button is pressed.
-   What the status line says at rest:
+     plays again. Under reduced motion the CSS sets the scale to 1, as
+     it does the Fold Buttons' bump, so nothing grows, yet the animation
+     still ends and clears the mark.
+8. **The bar and the status are written when a Gameplay design or
+   Gameplay Mode is chosen, and each time the paper comes to rest**, so
+   a dead end's message and its lost life arrive as the fold lands, not
+   as the button is pressed; the bar is written too when a hint is
+   spent. Choosing Sandbox Mode or Presentation Mode empties the status
+   line. What the status line says at rest:
 
    | The paper rests at | Status |
    | --- | --- |
@@ -139,14 +143,16 @@ type: plan
 
    A dead end reached by Undo or Redo says the same as one just
    pressed into. An active line's name
-   ([Plan 24, Decision 13](../done/24-gameplay-folds.md#decisions)) and a
+   ([Plan 24, Decision 13](./24-gameplay-folds.md#decisions)) and a
    hint's words (Decision 10) replace the text until the paper next
    comes to rest.
 9. **Out of lives, the design starts afresh.** When the paper rests
    with no life left, the status says so, the game is replaced by a
    new one, and the target is set to 0: the paper unfolds the losing
    path, and at the flat sheet the bar reads "Lives: 3" again and
-   every fold is open. No timer is involved; the old sheet stays under
+   every fold is open. The restart writes neither the bar nor the
+   status: both stay as the dead end left them until the paper rests at
+   the flat sheet. No timer is involved; the old sheet stays under
    its id until the next fold replaces it, as on any new game.
 10. **The Hint button** is enabled while the game has a hint and is
     not at the goal. A press while the paper is moving does nothing
@@ -159,10 +165,10 @@ type: plan
       3 folds back.", or "1 fold back.", and the Undo button is marked
       `data-hinted`, which the CSS pulses, growing to
       `--hint-pulse-scale: 1.1` and back every
-      `--hint-pulse-duration: 0.8s`, first guesses open to tuning and
-      not played under reduced motion, until the next fold, Undo, Redo,
-      Unfold or new game clears it, through a setUndoHinted() on the
-      fold bar.
+      `--hint-pulse-duration: 0.8s`, first guesses open to tuning, the
+      scale 1 under reduced motion, until the next fold, Undo, Redo,
+      Unfold, new game or change of mode clears it, through a
+      setUndoHinted() on the fold bar, which Sandbox Mode shares.
 11. **Next takes the player to the next design.** At the goal, unless
     the design is the last of `GAMEPLAY_DESIGNS`, the Next button
     shows; a press clicks the next Gameplay design's radio, which
@@ -172,7 +178,7 @@ type: plan
 12. **A new game resets everything**: the lives, the hint, the closed
     states and the press count, whenever a Gameplay design or Gameplay
     Mode is chosen
-    ([Plan 24, Decision 12](../done/24-gameplay-folds.md#decisions)). Nothing
+    ([Plan 24, Decision 12](./24-gameplay-folds.md#decisions)). Nothing
     carries from one design to the next or survives a reload.
 13. **No performance step.** Every rule is a lookup in a graph built
     at load, run once per press, and nothing here runs per frame, per
@@ -201,7 +207,7 @@ type: plan
 
 **Agent QA**
 
-1. Do: `node --input-type=module -e 'import { GAMEPLAY_DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; import { createGame, foldAt, hintAt, openEdges, pointsOf, spendHint } from "./docs/src/gameplay/session.js"; const graph = buildGraph(cutSheet(GAMEPLAY_DESIGNS[3])); const play = (game, folds, from = 0) => folds.reduce((g, fold, i) => foldAt(g, graph, from + i, fold), game); const open = (game, position) => openEdges(game, graph, position).map((e) => e.fold).join(""); const fresh = createGame(graph); console.log(JSON.stringify(fresh)); const wing = play(fresh, [6]); console.log(JSON.stringify(wing), open(wing, 1) === "", open(wing, 0)); const half = play(fresh, [4, 5, 6]); console.log(half.lives, half.closedNodeIds.length, [0, 1, 2, 3].map((p) => open(half, p)).join("|"), JSON.stringify(hintAt(half, graph, 3)), JSON.stringify(hintAt(half, graph, 0))); const again = play(half, [6], 1); console.log(again.lives, again.closedNodeIds.length, open(again, 0), again.pressCount); const won = play(fresh, [1, 0, 3, 2, 4, 6, 5]); console.log(won.lives, won.closedNodeIds.length, won.nodeIds.at(-1) === graph.goalNodeId, pointsOf(won, graph), pointsOf(spendHint(won), graph), pointsOf({ ...won, hints: 0, lives: 1, pressCount: 12 }, graph), pointsOf({ ...won, hints: 0, lives: 1, pressCount: 40 }, graph), spendHint(won).hints, Object.isFrozen(spendHint(won))); for (const attempt of [() => spendHint(spendHint(won)), () => foldAt(wing, graph, 0, 6)]) { try { attempt(); } catch (e) { console.log(e.name); } }'`
+1. Do: `node --input-type=module -e 'import { GAMEPLAY_DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; import { createGame, foldAt, hintAt, openEdges, pointsOf, spendHint } from "./docs/src/gameplay/session.js"; const graph = buildGraph(cutSheet(GAMEPLAY_DESIGNS[3])); const play = (game, folds, from = 0) => folds.reduce((g, fold, i) => foldAt(g, graph, from + i, fold), game); const open = (game, position) => openEdges(game, graph, position).map((e) => e.fold).join(""); const fresh = createGame(graph); console.log(JSON.stringify(fresh)); const wing = play(fresh, [6]); console.log(JSON.stringify(wing), open(wing, 1) === "", open(wing, 0)); const half = play(fresh, [4, 5, 6]); console.log(half.lives, half.closedNodeIds.length, [0, 1, 2, 3].map((p) => open(half, p)).join("|"), JSON.stringify(hintAt(half, graph, 3)), JSON.stringify(hintAt(half, graph, 0))); const again = play(half, [6], 1); console.log(again.lives, again.closedNodeIds.length, open(again, 0), again.pressCount); const won = play(fresh, [1, 0, 3, 2, 4, 6, 5]); console.log(won.lives, won.closedNodeIds.length, won.nodeIds.at(-1) === graph.goalNodeId, pointsOf(won, graph), pointsOf(spendHint(won), graph), pointsOf({ ...won, hints: 0, lives: 1, pressCount: 12 }, graph), pointsOf({ ...won, hints: 0, lives: 1, pressCount: 40 }, graph), spendHint(won).hints, [fresh, wing, spendHint(won)].every((g) => Object.isFrozen(g) && Object.isFrozen(g.closedNodeIds))); for (const attempt of [() => spendHint(spendHint(won)), () => foldAt(wing, graph, 0, 6)]) { try { attempt(); } catch (e) { console.log(e.name); } }'`
    Expect: seven lines, the paper dart's:
    - `{"closedNodeIds":[],"designId":"paper-dart","hints":1,"lives":3,"nodeIds":[0],"path":[],"pressCount":0}`
    - `{"closedNodeIds":[6],"designId":"paper-dart","hints":1,"lives":2,"nodeIds":[0,6],"path":[6],"pressCount":1} true 01234`
@@ -216,7 +222,8 @@ type: plan
      the centre fold closes on the flat sheet)
    - `3 0 true 300 250 100 100 0 true` (a right order: no life lost,
      nothing closed, the goal; 300 points, 250 with the hint spent,
-     and 100 at the least)
+     and 100 at the least; no hint left once spent; and every game,
+     new, folded or with a hint spent, frozen with its closed states)
    - `RangeError`, twice (a hint spent with none left; the closed wing
      pressed again)
 2. Do: `node --input-type=module -e 'import { GAMEPLAY_DESIGNS } from "./docs/src/designs/list.js"; import { cutSheet } from "./docs/src/fold/engine.js"; import { buildGraph } from "./docs/src/gameplay/graph.js"; import { createGame, foldAt, hintAt, openEdges } from "./docs/src/gameplay/session.js"; const graph = buildGraph(cutSheet(GAMEPLAY_DESIGNS[2])); const play = (game, folds, from = 0) => folds.reduce((g, fold, i) => foldAt(g, graph, from + i, fold), game); const open = (game, position) => openEdges(game, graph, position).map((e) => e.fold).join(""); let game = play(createGame(graph), [0, 2, 1, 3]); console.log(game.lives, game.closedNodeIds.length, [4, 3, 2, 1].map((p) => open(game, p)).join("|"), hintAt(game, graph, 4).foldsBack, hintAt(game, graph, 2).foldsBack, hintAt(game, graph, 1).fold); game = play(game, [3], 2); console.log(game.lives, game.closedNodeIds.length, game.path.join("")); game = play(game, [1], 3); console.log(game.lives, game.closedNodeIds.length, [3, 2, 1].map((p) => open(game, p)).join("|")); game = play(game, [3, 1, 2], 1); console.log(game.lives, game.closedNodeIds.length, open(game, 1), game.pressCount);'`
@@ -236,7 +243,7 @@ type: plan
 
 - Changes `docs/index.html` (the gameplay bar), `docs/styles/main.css`
   (the bar, and the readout's pulse, its length and size as custom
-  properties, off under reduced motion) and `docs/src/main.js` (the
+  properties, its scale 1 under reduced motion) and `docs/src/main.js` (the
   bar's wiring, what it and the status say at rest, and the restart),
   and adds `docs/src/ui/gameplay-bar.js`, per Decisions 6 to 9 and 12.
 - It should show no Fold Button, and light nothing, on a fold into a
@@ -248,8 +255,9 @@ type: plan
   at a dead end reached by them (Manual QA 5, 11).
 - It should, out of lives, say so, unfold the paper and start the
   design afresh with three lives and every fold open (Manual QA 10).
-- It should show the bar in Gameplay Mode alone, and start every new
-  game with three lives and a hint (Agent QA 1; Manual QA 1, 13).
+- It should show the bar and the game's messages in Gameplay Mode
+  alone, and start every new game with three lives and a hint (Agent
+  QA 1; Manual QA 1, 13).
 
 **Agent QA**
 
@@ -263,8 +271,8 @@ type: plan
 
 - Changes `docs/src/main.js` (the hint's press), `docs/src/ui/fold-bar.js`
   (setUndoHinted()), `docs/src/ui/gameplay-bar.js` (the button's
-  enabled state) and `docs/styles/main.css` (Undo's pulse, off under
-  reduced motion), per Decision 10.
+  enabled state) and `docs/styles/main.css` (Undo's pulse, its scale 1
+  under reduced motion), per Decision 10.
 - It should, from a state that can still reach the goal, light a right
   fold's line, grow its button, say "Hint." and the fold's name, and
   spend the hint (Manual QA 8).
@@ -389,8 +397,9 @@ console, and hard-reload (Shift+Cmd+R).
       for two lives, 50 for the hint, less 10 for one extra press. No
       "Next" shows: the dart is the last design.
 13. **Do:** click "Sandbox", then "Presentation", then "Gameplay".
-    - **Expect:** neither other mode shows "Lives", "Hint" or "Next",
-      and both work as before. Back in Gameplay Mode the dart is flat,
+    - **Expect:** "Folded! 240 points." goes as "Sandbox" is clicked;
+      neither other mode shows it, "Lives", "Hint" or "Next", and both
+      work as before. Back in Gameplay Mode the dart is flat,
       the lives read 3 and "Hint" is enabled.
 14. **Do:** press Tab until "Hint" shows a focus ring and press Enter;
     then, in the Rendering panel, set "Emulate CSS media feature
@@ -407,7 +416,7 @@ console, and hard-reload (Shift+Cmd+R).
 
 - A wrong fold is not marked when it is made: the game says nothing
   until no fold is left, by
-  [the research's ruling](./14-gameplay-mode-briefs.md#q12).
+  [the research's ruling](../todo/14-gameplay-mode-briefs.md#q12).
 - A closed fold's button simply does not show; its printed line stays.
 - Points show only at the goal, and are not kept from one design to
   the next.
@@ -427,3 +436,61 @@ console, and hard-reload (Shift+Cmd+R).
   line as the keyboard does (Decisions 5 and 10); the bar's and the
   status line's wording, written as the paper comes to rest
   (Decisions 7 and 8); and the Next button (Decision 11).
+- **2026-11-24T15:48:58Z** — **reviewed**: no Major finding; Step 1's
+  rules written afresh from Decisions 1 to 5 pass Agent QA 1 and 2, and
+  both Manual QA walks agree; fixed four drifts: the restart writes
+  neither bar nor status (Decisions 8, 9), leaving Gameplay Mode empties
+  the status and stops Undo's pulse (Decisions 8, 10, Step 2's fifth
+  criterion, Manual QA 13), reduced motion sets the pulses' scale to 1
+  so the lives' mark still clears (Decisions 7, 10), and Agent QA 1
+  checks every game is frozen.
+- **2026-11-24T15:59:31Z** — **implemented**: Steps 1 to 4. Changed
+  `docs/src/gameplay/session.js` (the six constants, the game's four new
+  fields, foldAt()'s judgement, openEdges()'s closed edges, hintAt(),
+  pointsOf(), spendHint(); still imports nothing), `docs/src/main.js`,
+  `docs/index.html`, `docs/styles/main.css`, `docs/src/ui/fold-bar.js`
+  (setUndoHinted()) and `docs/src/ui/gameplay-radios.js` (chooseNext(),
+  hasNext(); now returns an object, and throws if any Gameplay design
+  lacks a radio); added `docs/src/ui/gameplay-bar.js`. Agent QA: Step 1's
+  three blocks failed first on the missing exports and now print exactly
+  what they expect; Steps 2 to 4 pass, and fail against HEAD. Beyond the
+  plan's lines: a new game chosen while the paper rests at the flat sheet
+  leaves rest and re-enters it, so closed folds show again (Decision 12);
+  the paper resting with no life left anywhere but the goal restarts the
+  game, which covers an Undo pressed during the fatal fold (Decision 9);
+  the lives mark also clears on `animationcancel`. Manual QA unchanged:
+  every line walked against the code.
+- **2026-11-24T15:59:31Z** — **verified**: agent checks pass: every
+  changed module parses, no long lines beyond `index.html`'s three
+  exempt ones, `/` and every changed file served with status 200 by a
+  server this stage started and stopped, vendored checksums match;
+  browser not run.
+- **2026-11-24T16:06:15Z** — **quality-checked**: Fixed: `buttonOf()`
+  was copied into `docs/src/ui/gameplay-bar.js`, so a change to one copy
+  would miss the other; it is now exported from `docs/src/ui/fold-bar.js`
+  and imported, the copy deleted; chooseGameplayDesign()'s doc comment
+  said the paper re-enters rest only at the flat sheet, where renewRest()
+  does so at any rest (`docs/src/main.js`). Deferred: a restart at the
+  flat sheet, when Undo or Unfold during the fatal fold brings the paper
+  back to position 0, shows "Out of lives" and "Lives: 0" for one frame
+  only, since the next frame's rest writes the new game, as Decisions 8
+  and 9 read; needs the Lead Developer's ruling; focus drops to the body
+  after a keyboard press of Hint or Next, which disables or hides
+  itself, as already reported. Verified fine: the restart's frame order
+  (the fatal rest writes the bar and status, restartGame() leaves rest
+  in that frame, nothing lays out, the unfold rewrites both only at the
+  flat sheet, as Manual QA 10 expects); load order (every function
+  chooseMode() reaches at load is declared above it, and renewRest()
+  returns before leaveRest() there); per-frame path (leaveRest()
+  allocates nothing, nothing else added runs per frame); no GPU resource
+  added, resize untouched, no new Three.js API; reduced motion (both
+  pulses keep running at scale 1, so `animationend` clears `data-lost`);
+  Step 1's Agent QA 1 and 2 and Steps 2 to 4's blocks pass; 16 mutants
+  of `session.js`, 13 killed, 3 equivalent: `continue` for `break` in
+  foldAt()'s closing loop (a state before a non-dead end always has an
+  open edge to it), a life lost only on an unclosed state (a closed state
+  is never offered), and hintAt() taking the first open edge (in all four
+  Gameplay designs every live state's first edge leads to a live state);
+  Manual QA 1 to 13 walked against the code, the dart's and Mount Fuji's
+  moves, lives and points (170, 240) replayed in Node.
+- **2026-11-24T17:20:14Z** — **done**: Dead ends, lives, hints and points built and verified; passed the Lead Developer’s manual QA on 2026-11-24, who kept both reported readings as they are.

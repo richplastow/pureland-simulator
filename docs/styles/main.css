@@ -49,6 +49,12 @@
   --fold-button-size: 2rem;
   --fold-button-stroke-width: 2; /* the icon's lines, in its 24-unit view box */
   --fold-lines-gap: 0.25rem; /* between the checkbox and its text */
+  /* the hinted Undo button's pulse, out to its peak and back, repeating */
+  --hint-pulse-duration: 0.8s;
+  --hint-pulse-scale: 1.1; /* the hinted Undo button's size at the peak */
+  /* the lives readout's one pulse as a life is lost, out and back */
+  --lives-pulse-duration: 0.4s;
+  --lives-pulse-scale: 1.4; /* the lives readout's size at the peak */
   /* the page's colour, showing through the transparent canvas: a light grey
      on the light page, so the Fold Buttons' pure white keeps its circle,
      and the system's own on the dark page */
@@ -305,11 +311,17 @@ body {
   }
 }
 
-/* With reduced motion, the buttons lighten but never grow. */
+/*
+ * With reduced motion, the buttons lighten but never grow, and the pulses
+ * of the lives readout and the hinted Undo button keep their size. Their
+ * animations still run, so the readout's end still clears its mark.
+ */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --fold-button-bump-scale: 1;
     --fold-button-hover-scale: 1;
+    --hint-pulse-scale: 1;
+    --lives-pulse-scale: 1;
   }
 }
 
@@ -357,16 +369,17 @@ body {
 }
 
 /*
- * The status line, src/ui/status.js's, which names the active fold in
- * Gameplay Mode: fixed at the top centre of the viewport, as far from its
- * top edge as the toolbar is from its bottom, in the toolbar's own font and
- * colour, which it inherits. Its box fits its text, so the Fold Buttons'
- * layout keeps clear of that alone; empty, its box has no size, so the
- * layout ignores it. It is never `display: none`, which would take the live
- * region out of the accessibility tree, so the screen reader could miss
- * the text that shows it again. It fades with the toolbar, and the pointer
- * always passes through it, which needs a rule at least as specific as the
- * one above, and later.
+ * The status line, src/ui/status.js's, which in Gameplay Mode names the
+ * active fold, gives a hint, or says what the paper rests at, such as a
+ * dead end or the goal: fixed at the top centre of the viewport, as far
+ * from its top edge as the toolbar is from its bottom, in the toolbar's own
+ * font and colour, which it inherits. Its box fits its text, so the Fold
+ * Buttons' layout keeps clear of that alone; empty, its box has no size, so
+ * the layout ignores it. It is never `display: none`, which would take the
+ * live region out of the accessibility tree, so the screen reader could
+ * miss the text that shows it again. It fades with the toolbar, and the
+ * pointer always passes through it, which needs a rule at least as specific
+ * as the one above, and later.
  */
 .controls > .status {
   position: fixed;
@@ -436,7 +449,57 @@ body {
   display: none;
 }
 
+/*
+ * The gameplay bar, shown in Gameplay Mode alone, after the fold bar: the
+ * lives readout, then Hint and, at the goal, Next, drawn as the fold bar's
+ * buttons are. Its `hidden` attribute needs this rule, as the fold bar's
+ * does; Next's needs none. The readout, a flex item and so transformable,
+ * sits on the buttons' line, padded as they are.
+ */
+.gameplay-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--controls-gap);
+}
+
+.gameplay-bar[hidden] {
+  display: none;
+}
+
+.gameplay-bar output {
+  padding: var(--choice-padding);
+}
+
+/*
+ * Marked by src/ui/gameplay-bar.js as a life is lost, the readout pulses
+ * once, growing and returning; the mark is cleared as the animation ends.
+ */
+.gameplay-bar output[data-lost] {
+  animation: lives-pulse var(--lives-pulse-duration) ease-out;
+}
+
+@keyframes lives-pulse {
+  50% {
+    scale: var(--lives-pulse-scale);
+  }
+}
+
+/*
+ * Marked by src/ui/fold-bar.js while a hint says the wrong turn lies back
+ * along the path, Undo pulses, growing and returning, until the next move.
+ */
+.fold-bar button[data-hinted] {
+  animation: hint-pulse var(--hint-pulse-duration) ease-in-out infinite;
+}
+
+@keyframes hint-pulse {
+  50% {
+    scale: var(--hint-pulse-scale);
+  }
+}
+
 .fold-bar button,
+.gameplay-bar button,
 .export-dialog button {
   padding: var(--choice-padding);
   border: var(--choice-border-width) solid CanvasText;
@@ -449,12 +512,17 @@ body {
 }
 
 .fold-bar button:hover:enabled,
+.gameplay-bar button:hover:enabled,
 .export-dialog button:hover:enabled {
   background-color: var(--choice-hover-color);
 }
 
-/* A button at its limit is greyed out in the system's disabled colour. */
-.fold-bar button:disabled {
+/*
+ * A button at its limit, or Hint with none left or at the goal, is greyed
+ * out in the system's disabled colour.
+ */
+.fold-bar button:disabled,
+.gameplay-bar button:disabled {
   border-color: GrayText;
   color: GrayText;
   cursor: default;

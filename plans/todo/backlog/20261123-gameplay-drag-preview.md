@@ -50,7 +50,7 @@ line, the dart's wings, a drag from that line folds.
 
 ## When to pick it up
 
-- After [Plan 25](../25-gameplay-game.md) is done.
+- After [Plan 25](../../done/25-gameplay-game.md) is done.
 - With the plan that brings plain lines and a choice of direction to
   Gameplay Mode, if the drag is to choose the direction.
 

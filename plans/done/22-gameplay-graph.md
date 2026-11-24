@@ -14,7 +14,7 @@ type: plan
   offers, a path of a design's folds cut as a sheet, and each design's
   maze as a graph of states. [Plan 23](./23-gameplay-mode.md) puts the
   mode on the page, [Plan 24](./24-gameplay-folds.md) folds it, and
-  [Plan 25](../todo/25-gameplay-game.md) adds dead ends, lives, hints and
+  [Plan 25](./25-gameplay-game.md) adds dead ends, lives, hints and
   points.
 - Basic Gameplay Mode is the research's game at its smallest. Every
   fold line folds one way only, a mountain or a valley, so the order is

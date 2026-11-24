@@ -64,7 +64,7 @@ the research left open.
 
 ## When to pick it up
 
-- After [Plan 25](../25-gameplay-game.md) is done, so candidates can be
+- After [Plan 25](../../done/25-gameplay-game.md) is done, so candidates can be
   played, not only measured.
 - When the four designs feel too few in play.
 

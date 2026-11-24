@@ -103,7 +103,7 @@ The Lead Developer, on 24 November 2026, on hearing the findings:
 So **Basic Gameplay Mode** (Plans 22 to 25) keeps the printed rule:
 every Fold Button is a design fold, in the design's own layers, and a
 printed line no available design fold creases along has no button.
-Plan 24 and [Plan 25](../25-gameplay-game.md) go ahead as written. Free
+Plan 24 and [Plan 25](../../done/25-gameplay-game.md) go ahead as written. Free
 folds are **Advanced Gameplay Mode**, for a later plan.
 
 ## Recommended fix: free folds, in a plan of their own
@@ -134,7 +134,7 @@ What Advanced Gameplay Mode would reopen (Derived):
   5, one Fold Button per line; Decision 6, a press folding the design's
   fold at the design's angle; and steps 5, 8 and 9 of its
   [Manual QA](../../done/24-gameplay-folds.md#manual-qa).
-- **[Plan 25](../25-gameplay-game.md#decisions):** its traps, hints and
+- **[Plan 25](../../done/25-gameplay-game.md#decisions):** its traps, hints and
   points for extra folds, all read off a graph of design folds.
 
 What the plan must decide:

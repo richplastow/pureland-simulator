@@ -2,7 +2,8 @@
  * @fileoverview
  * Connects the fold bar's Undo, Redo, Unfold and Export buttons, and
  * their keyboard shortcuts, to the moves they make, keeps each button
- * disabled at its limit, and shows the export in its dialog.
+ * disabled at its limit, and shows the export in its dialog; and finds a
+ * button by its data attribute, for the gameplay bar too.
  */
 
 // How long "Copy" reads "Copied" after a copy, in seconds.
@@ -28,6 +29,9 @@ const COPIED_SECONDS = 1.5;
  *   Mode exports.
  * - setLimits() disables Undo, Unfold and Export at position 0, and Redo
  *   at the fold count, writing them only when they change.
+ * - setUndoHinted() marks Undo `data-hinted`, which the CSS pulses while a
+ *   Gameplay Mode hint says the wrong turn lies back along the path, or
+ *   clears the mark.
  * - Throws at once if the page has no `.fold-bar` or `.export-dialog`,
  *   the bar lacks one of its four buttons, or the dialog its `<textarea>`
  *   or its Copy button.
@@ -38,8 +42,9 @@ const COPIED_SECONDS = 1.5;
  * @returns isExportOpen(), which returns true while the dialog is open;
  *   setExportShown(), which takes true to show Export, or false to hide
  *   it; setLimits(), which takes the fold count, a session's or a game's,
- *   and the target's position; and setShown(), which takes true to show
- *   the bar, or false to hide it.
+ *   and the target's position; setShown(), which takes true to show the
+ *   bar, or false to hide it; and setUndoHinted(), which takes true to
+ *   mark Undo, or false to clear the mark.
  */
 export const connectFoldBar = (onExport, onRedo, onUndo, onUnfold) => {
   const bar = document.querySelector(".fold-bar");
@@ -161,16 +166,24 @@ export const connectFoldBar = (onExport, onRedo, onUndo, onUnfold) => {
     bar.hidden = !isShown;
   };
 
-  return { isExportOpen, setExportShown, setLimits, setShown };
+  /** #### Marks Undo as the hint's way back, or clears the mark
+   * @param isHinted True to mark Undo `data-hinted`.
+   */
+  const setUndoHinted = (isHinted) => {
+    undoButton.toggleAttribute("data-hinted", isHinted);
+  };
+
+  return { isExportOpen, setExportShown, setLimits, setShown, setUndoHinted };
 };
 
 /** #### Returns the button within an element that carries a data attribute
  * - Throws if the element has no such button.
+ * - Shared with the gameplay bar, whose buttons are found the same way.
  * @param parent The element to search, such as the `.fold-bar`.
  * @param attribute The attribute's name, such as `data-undo`.
  * @returns The button.
  */
-const buttonOf = (parent, attribute) => {
+export const buttonOf = (parent, attribute) => {
   const button = parent.querySelector(`button[${attribute}]`);
   if (button === null) {
     throw new Error(`No button: .${parent.className} button[${attribute}]`);

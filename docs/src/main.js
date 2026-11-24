@@ -42,6 +42,13 @@
  * line active, and the status line names its fold. A new game starts on
  * every choice of a Gameplay design or of the mode, and Undo, Redo and
  * Unfold walk it back and forth.
+ * The game judges each press by lookup in the graph: a press into a dead
+ * end costs a life and closes that way, which then shows no button, and
+ * out of lives the paper unfolds to start the design afresh. The gameplay
+ * bar shows the lives, a Hint button, which lights a right fold or says
+ * how far back the wrong turn was, pulsing Undo, and at the goal a Next
+ * button to the next design. As the paper comes to rest, the status line
+ * says what it rests at: the goal, with the game's points, or a dead end.
  */
 
 import {
@@ -69,7 +76,10 @@ import { cutPath, gameplaySheetId } from "./gameplay/path.js";
 import {
   createGame,
   foldAt as foldGameAt,
+  hintAt,
   openEdges,
+  pointsOf,
+  spendHint,
 } from "./gameplay/session.js";
 import { connectDrag } from "./input/drag.js";
 import { connectMouseDetection } from "./input/mouse.js";
@@ -124,6 +134,7 @@ import {
 } from "./ui/fold-button-layout.js";
 import { connectFoldButtons, FOLD_BUTTON_LABELS } from "./ui/fold-buttons.js";
 import { connectFoldLinesToggle } from "./ui/fold-lines-toggle.js";
+import { connectGameplayBar } from "./ui/gameplay-bar.js";
 import { connectGameplayRadios } from "./ui/gameplay-radios.js";
 import { connectModeRadios } from "./ui/mode-radios.js";
 import { connectPatternRadios } from "./ui/pattern-radios.js";
@@ -538,6 +549,10 @@ const choosePattern = (choice) => {
  *   design already checked, and leaves the gameplay sheet in `sheets` as
  *   it is, since the paper may still be unfolding on it towards the
  *   choice's position 0; the next fold, made at position 0, replaces it.
+ * - The new game has every life and hint and nothing closed: writes the
+ *   gameplay bar, empties the status line and stops Undo's hinted pulse.
+ *   If the paper rests, it leaves rest at once, as renewRest() sets out,
+ *   so even at the flat sheet the old game's closed folds show again.
  * - A choice can arrive twice, and the second starts another empty game.
  * @param choice The Gameplay design's choice, as choose() takes it, with
  *   its `designId`.
@@ -546,10 +561,14 @@ const chooseGameplayDesign = (choice) => {
   game = createGame(graphs[choice.designId]);
   choose(choice);
   writeFoldBar();
+  writeGameplayBar();
+  say("");
+  foldBar.setUndoHinted(false);
+  renewRest();
 };
 
 const checkedDesignChoice = connectDesignRadios(PAPER_COLORS, choose);
-const checkedGameplayChoice = connectGameplayRadios(
+const { checkedGameplayChoice, chooseNext, hasNext } = connectGameplayRadios(
   PAPER_COLORS,
   chooseGameplayDesign,
 );
@@ -568,7 +587,9 @@ const checkedPatternChoice = connectPatternRadios(PAPER_COLORS, choosePattern);
  *   that keeps the folds before k, then this fold, and recuts the gameplay
  *   sheet along the game's whole path, finished if the path ends at the
  *   graph's goal, so its lines fade out there.
- * - Either way it sets the target to k + 1.
+ * - Either way it sets the target to k + 1, and stops Undo's hinted pulse.
+ *   A Gameplay press's judgement, a lost life, is written only once the
+ *   paper comes to rest, by writeGameAtRest().
  * - Does nothing for a direction whose limit is under `SNAP_RADIANS`,
  *   which shows no button: in Gameplay Mode, the direction the edge does
  *   not fold.
@@ -610,6 +631,7 @@ const foldLine = (line, isFrontFacing, type) => {
   clearPick();
   writeSequenceState();
   writeFoldBar();
+  foldBar.setUndoHinted(false);
 };
 
 /** #### Returns the button a line's pair hides, seen from one side
@@ -978,7 +1000,8 @@ connectMouseDetection(() => {
 // by hand. Undo, Redo and Unfold move only the target, between 0 and the
 // fold count, the game's or the session's, so a step under way finishes
 // first, and repeated presses add up, each playing in turn. Each drops a
-// live fold first.
+// live fold first, and stops Undo's hinted pulse; in Gameplay Mode, none
+// costs a life or closes a state.
 const foldBar = connectFoldBar(
   () =>
     writeDesignFile(crypto.randomUUID(), patterns[sequenceTarget.sheetId], {
@@ -991,16 +1014,19 @@ const foldBar = connectFoldBar(
       foldCount(),
     );
     writeFoldBar();
+    foldBar.setUndoHinted(false);
   },
   () => {
     dropLive();
     sequenceTarget.position = Math.max(sequenceTarget.position - 1, 0);
     writeFoldBar();
+    foldBar.setUndoHinted(false);
   },
   () => {
     dropLive();
     sequenceTarget.position = 0;
     writeFoldBar();
+    foldBar.setUndoHinted(false);
   },
 );
 
@@ -1020,12 +1046,118 @@ const writeFoldBar = () => {
   foldBar.setLimits(foldCount(), sequenceTarget.position);
 };
 
+/** #### Clears what the paper showed at rest, as it leaves rest
+ * - Clears the active line and every pair, and empties the rest state's
+ *   faces, lines, segments and spans.
+ * - Allocates nothing, so it is safe on the per-frame path.
+ */
+const leaveRest = () => {
+  clearPick();
+  hideFastPairs();
+  restFaces = NONE_AT_REST;
+  restFoldLines = NONE_AT_REST;
+  restLimits = NONE_AT_REST;
+  restLines = NONE_AT_REST;
+  restSegments = NONE_AT_REST;
+  restSpans = NONE_AT_REST;
+  restSpansByLine = NONE_AT_REST;
+  screenLines = NONE_AT_REST;
+};
+
+/** #### Has the paper come to rest afresh, for a new game
+ * - If the paper rests, it leaves rest now, so the animation loop finds
+ *   the new game's open edges on the next frame if the paper stays where it
+ *   is, or once it next comes to rest if it moves: the old game's lines,
+ *   with its closed folds left out, never outlive it.
+ * - Declared before chooseMode() first runs, at load, which reaches it.
+ * - Allocates nothing.
+ */
+const renewRest = () => {
+  if (!isAtRest) return;
+
+  isAtRest = false;
+  leaveRest();
+};
+
+/** #### Returns true if the game's target is its graph's goal
+ * - Allocates nothing.
+ * @returns True at the goal, or folding to it.
+ */
+const isTargetAtGoal = () =>
+  game.nodeIds[sequenceTarget.position] === graphs[game.designId].goalNodeId;
+
+/** #### Returns true if the game has a hint to spend, away from the goal
+ * - Allocates nothing.
+ * @returns True if Hint is enabled.
+ */
+const canHint = () => game.hints > 0 && !isTargetAtGoal();
+
+/** #### Writes the gameplay bar from the game: lives, Hint and Next
+ * - Called when a Gameplay design or Gameplay Mode is chosen, when the
+ *   paper comes to rest in Gameplay Mode, and when a hint is spent, never
+ *   by the restart, so a dead end's readout stays until the flat sheet.
+ * - Next shows at the goal, unless the design is the last.
+ */
+const writeGameplayBar = () => {
+  const isAtGoal = isTargetAtGoal();
+  gameplayBar.write({
+    canHint: canHint(),
+    isNextShown: isAtGoal && hasNext(),
+    lives: game.lives,
+  });
+};
+
+/** #### Spends the game's hint: a right fold, or the way back to one
+ * - Does nothing, and spends nothing, unless Hint is enabled and a line
+ *   can be picked now, so never while the paper moves.
+ * - From a live state, makes the hinted fold's line active, as a keyboard
+ *   pick does, lit with its button emphasised, and the status line reads
+ *   "Hint." before the fold's own words, as statusOf() words them.
+ * - From a doomed state, the status line says how many folds back the
+ *   wrong turn was, and Undo pulses until the next move.
+ * - Writes the gameplay bar, which greys Hint out with no hint left.
+ * - Throws, spending nothing, if the hinted fold has no Fold Line at rest:
+ *   a fault in the design.
+ * - Allocates, on the press only.
+ */
+const pressHint = () => {
+  if (mode !== "gameplay" || !canHint() || !canPick()) return;
+
+  const { position } = sequenceState;
+  const { fold, foldsBack } = hintAt(game, graphs[game.designId], position);
+  const line = restFoldLines.find((edge) => edge.fold === fold);
+  if (fold !== null && line === undefined) {
+    throw new Error(
+      `Hinted fold ${fold} of design "${game.designId}" has no Fold Line`,
+    );
+  }
+
+  game = spendHint(game);
+  writeGameplayBar();
+  if (fold === null) {
+    const folds = foldsBack === 1 ? "fold" : "folds";
+    say(`Hint. The wrong turn was ${foldsBack} ${folds} back.`);
+    foldBar.setUndoHinted(true);
+    return;
+  }
+  const isFrontFacing = pick.facesFront();
+  pickKeyboardLine(line, isFrontFacing);
+  say(`Hint. ${statusOf(line, isFrontFacing)}`);
+};
+
+// Hint spends the game's hint, and Next clicks the next Gameplay design's
+// radio, starting its game.
+const gameplayBar = connectGameplayBar(pressHint, chooseNext);
+
 /** #### Applies a mode: its fold lines, its toolbar, and its choice
  * - Forces the fold lines on in Gameplay Mode and Sandbox Mode, or
  *   releases them in Presentation Mode, shows the fold bar in those two
  *   modes, its Export and the "Fast Fold" checkbox in Sandbox Mode only,
- *   and passes on the choice of the checked Gameplay design, design or
- *   pattern, as if that radio had been chosen.
+ *   the gameplay bar in Gameplay Mode only, and passes on the choice of
+ *   the checked Gameplay design, design or pattern, as if that radio had
+ *   been chosen.
+ * - Stops Undo's hinted pulse. Sandbox Mode and Presentation Mode empty
+ *   the status line, as Gameplay Mode's new game does.
  * - A mode can arrive twice, and does nothing the second time but empty an
  *   empty session or start another empty game.
  * @param chosenMode `"gameplay"`, `"presentation"` or `"sandbox"`.
@@ -1035,15 +1167,19 @@ const chooseMode = (chosenMode) => {
   forceLinesOn(mode !== "presentation");
   foldBar.setShown(mode !== "presentation");
   foldBar.setExportShown(mode === "sandbox");
+  foldBar.setUndoHinted(false);
   fastFold.setShown(mode === "sandbox");
+  gameplayBar.setShown(mode === "gameplay");
   switch (mode) {
     case "gameplay":
       chooseGameplayDesign(checkedGameplayChoice());
       break;
     case "presentation":
+      say("");
       choose(checkedDesignChoice());
       break;
     case "sandbox":
+      say("");
       choosePattern(checkedPatternChoice());
       break;
     default:
@@ -1504,6 +1640,9 @@ const isSequenceAtRest = () =>
  *   and sandboxLines() find them.
  * - Forgets the remembered keyboard pick, whose line is gone, and marks
  *   the layout stale.
+ * - In Gameplay Mode, then writes the gameplay bar and the status line, as
+ *   writeGameAtRest() sets out. A live fold, which comes to rest here too,
+ *   is Sandbox Mode's alone.
  * - Allocates, so call it only when the paper comes to rest, or a live
  *   fold is made.
  */
@@ -1537,6 +1676,46 @@ const enterRest = () => {
   rememberedLine = null;
   screenLines = NONE_AT_REST;
   isLayoutStale = true;
+  if (mode === "gameplay") writeGameAtRest();
+};
+
+/** #### Starts the design afresh, out of lives, unfolding the paper
+ * - Replaces the game with a new one, stops Undo's hinted pulse and sets
+ *   the target to 0, so the paper unfolds the losing path, on the old
+ *   sheet, which the next fold replaces.
+ * - Writes neither the gameplay bar nor the status line: both stay as the
+ *   dead end left them until the paper rests at the flat sheet.
+ */
+const restartGame = () => {
+  game = createGame(graphs[game.designId]);
+  foldBar.setUndoHinted(false);
+  sequenceTarget.position = 0;
+  writeFoldBar();
+  renewRest();
+};
+
+/** #### Writes the gameplay bar and the status line as the paper rests
+ * - The status line says "Folded!" and the game's points at the goal, where
+ *   the paper rests only once its lines have faded out. With no life left,
+ *   anywhere else, it says so, and the design starts afresh. At a dead end,
+ *   a state with no open edge, reached by a press, Undo or Redo alike, it
+ *   says to undo. At any other state it empties.
+ * - Allocates, so call it only from enterRest(), in Gameplay Mode.
+ */
+const writeGameAtRest = () => {
+  const graph = graphs[game.designId];
+  const { position } = sequenceState;
+  writeGameplayBar();
+  if (game.nodeIds[position] === graph.goalNodeId) {
+    say(`Folded! ${pointsOf(game, graph)} points.`);
+  } else if (game.lives === 0) {
+    say("Out of lives. Starting again.");
+    restartGame();
+  } else if (openEdges(game, graph, position).length === 0) {
+    say("Dead end. Undo and try another way.");
+  } else {
+    say("");
+  }
 };
 
 /** #### Returns the lines a game's paper can fold along at rest, and limits
@@ -2067,25 +2246,16 @@ renderer.setAnimationLoop((timestampMs) => {
     if (spinReset.progress >= 1) isLayoutStale = true;
   }
 
-  // Coming to rest finds the lines to pick from; leaving it clears them,
-  // the active line and every pair, before the frame draws the paper
-  // moving.
+  // Coming to rest finds the lines to pick from, and in Gameplay Mode says
+  // what the paper rests at; leaving it clears them, the active line and
+  // every pair, before the frame draws the paper moving.
   const isNowAtRest = isSequenceAtRest();
   if (isNowAtRest !== isAtRest) {
     isAtRest = isNowAtRest;
     if (isAtRest) {
       enterRest();
     } else {
-      clearPick();
-      hideFastPairs();
-      restFaces = NONE_AT_REST;
-      restFoldLines = NONE_AT_REST;
-      restLimits = NONE_AT_REST;
-      restLines = NONE_AT_REST;
-      restSegments = NONE_AT_REST;
-      restSpans = NONE_AT_REST;
-      restSpansByLine = NONE_AT_REST;
-      screenLines = NONE_AT_REST;
+      leaveRest();
     }
   }
 
