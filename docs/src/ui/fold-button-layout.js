@@ -33,6 +33,10 @@ export const POINTER_CLEARANCE_PX = 40;
 // pixels, so rounding never leaves the pair touching what blocked it.
 const EDGE_NUDGE_PX = 1e-6;
 
+// How far a span's end may lie from a line and still lie along it, in CSS
+// pixels: rounding alone, as where two folds share one line.
+const ALONG_LINE_ROUNDING_PX = 1e-6;
+
 // No shown pairs, for a slide that keeps clear of none.
 const NO_PAIRS = Object.freeze([]);
 
@@ -47,18 +51,26 @@ const LAYOUT_SAMPLE_TO = 0.9;
  *   `index` order, and for each tries `LAYOUT_SAMPLES` points evenly from
  *   0.1 to 0.9 of each of its spans. It keeps the points whose box lies in
  *   the viewport, clear of every exclusion and at least `space.pair.gapPx`
- *   from every box placed, and takes the one furthest from other lines
- *   and placed pairs. A line with no such point gets no pair, so pairs
- *   never overlap.
+ *   from every box placed. A line with no such point gets no pair, so
+ *   pairs never overlap.
+ * - Of the points kept, it takes the one furthest from other lines and
+ *   placed pairs; or, middle first, the one nearest the middle of the
+ *   line's longest span, the keyboard's point, among those whose box
+ *   crosses no other line's spans, so each pair plainly sits on its own
+ *   line. A line lying along this one, as the second of two folds sharing
+ *   a line does, is not another line, since no box on it could miss it.
  * - Each pair centres on a point of its own line, arranged by its slant:
  *   stacked on a shallow line, side by side on a steep one.
  * - Allocates, so call it only when the scene comes to rest.
  * - Pure maths, with no DOM or GPU access.
  * @param lines The Fold Lines on screen.
  * @param space The space to lay the pairs out in.
+ * @param isMiddleFirst True to take the point nearest the line's middle
+ *   whose box crosses no other line; false, the default, to take the
+ *   point furthest from other lines and placed pairs.
  * @returns The placements, one per line that fits, in the order placed.
  */
-export const placePairs = (lines, space) => {
+export const placePairs = (lines, space, isMiddleFirst = false) => {
   const order = [...lines].sort(
     (first, second) =>
       second.lengthPx - first.lengthPx || first.index - second.index,
@@ -69,8 +81,11 @@ export const placePairs = (lines, space) => {
     const halfWidth = halfWidthOf(isStacked, space.pair);
     const halfHeight = halfHeightOf(isStacked, space.pair);
     const { segments } = line;
+    const middle = longestSpanOf(line);
+    const middleX = (segments[middle] + segments[middle + 2]) / 2;
+    const middleY = (segments[middle + 1] + segments[middle + 3]) / 2;
     let best = null;
-    let bestClearancePx = -Infinity;
+    let bestScore = -Infinity;
     for (let s = 0; s < segments.length; s += 4) {
       for (let k = 0; k < LAYOUT_SAMPLES; k++) {
         const t =
@@ -79,10 +94,19 @@ export const placePairs = (lines, space) => {
         const x = segments[s] + t * (segments[s + 2] - segments[s]);
         const y = segments[s + 1] + t * (segments[s + 3] - segments[s + 1]);
         if (!isBoxClear(x, y, halfWidth, halfHeight, placed, space)) continue;
+        if (
+          isMiddleFirst &&
+          crossesOtherLine(x, y, halfWidth, halfHeight, line, lines)
+        ) {
+          continue;
+        }
 
-        const clearancePx = clearanceOf(x, y, line, lines, placed, space);
-        if (clearancePx > bestClearancePx) {
-          bestClearancePx = clearancePx;
+        // Higher is better: nearness to the middle, or clearance.
+        const score = isMiddleFirst
+          ? -Math.hypot(x - middleX, y - middleY)
+          : clearanceOf(x, y, line, lines, placed, space);
+        if (score > bestScore) {
+          bestScore = score;
           best = { isStacked, lineIndex: line.index, x, y };
         }
       }
@@ -598,6 +622,81 @@ const clearAlong = (
  */
 const clampInto = (value, min, max) => Math.max(min, Math.min(value, max));
 
+/** #### Returns true if a span passes through the inside of a box
+ * - A span that only touches the box's edge or corner does not.
+ * - Allocates nothing.
+ * @param ax The span's start x, in CSS pixels.
+ * @param ay The span's start y, in CSS pixels.
+ * @param bx The span's end x, in CSS pixels.
+ * @param by The span's end y, in CSS pixels.
+ * @param x The box's centre x, in CSS pixels.
+ * @param y The box's centre y, in CSS pixels.
+ * @param halfWidth The box's half-width, in CSS pixels.
+ * @param halfHeight The box's half-height, in CSS pixels.
+ * @returns True if some stretch of the span lies inside the box.
+ */
+const crossesBox = (ax, ay, bx, by, x, y, halfWidth, halfHeight) => {
+  const dx = bx - ax;
+  const dy = by - ay;
+
+  // The stretch of the span, as fractions along it, inside each slab.
+  let from = 0;
+  let to = 1;
+  if (dx === 0) {
+    if (Math.abs(ax - x) >= halfWidth) return false;
+  } else {
+    const first = (x - halfWidth - ax) / dx;
+    const second = (x + halfWidth - ax) / dx;
+    from = Math.max(from, Math.min(first, second));
+    to = Math.min(to, Math.max(first, second));
+  }
+  if (dy === 0) {
+    if (Math.abs(ay - y) >= halfHeight) return false;
+  } else {
+    const first = (y - halfHeight - ay) / dy;
+    const second = (y + halfHeight - ay) / dy;
+    from = Math.max(from, Math.min(first, second));
+    to = Math.min(to, Math.max(first, second));
+  }
+
+  return from < to;
+};
+
+/** #### Returns true if a box crosses the spans of a line other than its own
+ * - Leaves out the box's own line, and any line lying along it.
+ * - Allocates nothing.
+ * @param x The box's centre x, in CSS pixels.
+ * @param y The box's centre y, in CSS pixels.
+ * @param halfWidth The box's half-width, in CSS pixels.
+ * @param halfHeight The box's half-height, in CSS pixels.
+ * @param line The box's own line.
+ * @param lines Every line on screen.
+ * @returns True if the box crosses another line's span.
+ */
+const crossesOtherLine = (x, y, halfWidth, halfHeight, line, lines) => {
+  for (let i = 0; i < lines.length; i++) {
+    const other = lines[i];
+    if (other === line || liesAlong(other, line)) continue;
+
+    const { segments } = other;
+    for (let s = 0; s < segments.length; s += 4) {
+      const isCrossed = crossesBox(
+        segments[s],
+        segments[s + 1],
+        segments[s + 2],
+        segments[s + 3],
+        x,
+        y,
+        halfWidth,
+        halfHeight,
+      );
+      if (isCrossed) return true;
+    }
+  }
+
+  return false;
+};
+
 /** #### Returns the fraction along a span of a point's foot, kept to its ends
  * - Allocates nothing.
  * @param ax The span's start x, in CSS pixels.
@@ -673,6 +772,57 @@ const isBoxClear = (x, y, halfWidth, halfHeight, placed, space) => {
   }
 
   return true;
+};
+
+/** #### Returns true if every span of one line lies along another line
+ * - Along the straight line through the other's spans, to within
+ *   `ALONG_LINE_ROUNDING_PX`, however far it reaches.
+ * - Allocates nothing.
+ * @param line The line whose spans are tested.
+ * @param along The line they may lie along, with at least one span.
+ * @returns True if they all do.
+ */
+const liesAlong = (line, along) => {
+  const { segments } = along;
+  const last = segments.length - 4;
+  const ax = segments[0];
+  const ay = segments[1];
+  const dx = segments[last + 2] - ax;
+  const dy = segments[last + 3] - ay;
+  const lengthPx = Math.hypot(dx, dy);
+  if (lengthPx === 0) return false;
+
+  const ends = line.segments;
+  for (let e = 0; e < ends.length; e += 2) {
+    const offPx = Math.abs(dx * (ends[e + 1] - ay) - dy * (ends[e] - ax));
+    if (offPx / lengthPx > ALONG_LINE_ROUNDING_PX) return false;
+  }
+
+  return true;
+};
+
+/** #### Returns the index in a line's `segments` of its longest span
+ * - Ties go to the first.
+ * - Allocates nothing.
+ * @param line The line on screen, with at least one span.
+ * @returns The index of the span's first number.
+ */
+const longestSpanOf = (line) => {
+  const { segments } = line;
+  let longest = 0;
+  let longestPx = -1;
+  for (let s = 0; s < segments.length; s += 4) {
+    const lengthPx = Math.hypot(
+      segments[s + 2] - segments[s],
+      segments[s + 3] - segments[s + 1],
+    );
+    if (lengthPx > longestPx) {
+      longest = s;
+      longestPx = lengthPx;
+    }
+  }
+
+  return longest;
 };
 
 /** #### Slides a pair along a line's spans one way from a foot, until it fits

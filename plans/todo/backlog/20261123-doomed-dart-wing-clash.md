@@ -34,7 +34,7 @@ four Gameplay mazes at 63 samples per fold:
 
 Accepted: real paper bends a little to let two parts pass, so the
 folds stay available and are posed as the engine poses them
-([Plan 24's Context](../24-gameplay-folds.md#context)).
+([Plan 24's Context](../../done/24-gameplay-folds.md#context)).
 
 ## Recommended fix: refuse the fold in buildGraph()
 

@@ -5,6 +5,13 @@
  * colours, in a pool that keeps every pair made for the page's life.
  */
 
+// Each button's accessible name, by its fold as the player sees it, which
+// the status line also reads.
+export const FOLD_BUTTON_LABELS = Object.freeze({
+  mountain: "Mountain fold",
+  valley: "Valley fold",
+});
+
 // Each button, in the order they sit in the DOM: its fold as the player
 // sees it, its accessible name, and its icon, in a view box 24 units
 // square: the fold's dash pattern as the paper prints it, dashed for a
@@ -15,13 +22,13 @@
 const FOLD_BUTTONS = Object.freeze([
   Object.freeze({
     dashes: "4 3",
-    label: "Valley fold",
+    label: FOLD_BUTTON_LABELS.valley,
     shape: "6,11 12,19 18,11",
     type: "valley",
   }),
   Object.freeze({
     dashes: "5 2 1 2 1 2",
-    label: "Mountain fold",
+    label: FOLD_BUTTON_LABELS.mountain,
     shape: "6,19 12,11 18,19",
     type: "mountain",
   }),
@@ -54,15 +61,17 @@ const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
  *   its pair; the caller turns that into the front's terms.
  * - One button of a pair can be hidden, for a direction its line cannot
  *   fold; a press on a hidden button, by its pair's press(), does nothing.
- * - Reports a pointer that hovers over a shown pair, a mouse or a pen in
- *   range, never a touch, as it enters the pair, and as it leaves the pair
+ * - Reports a pointer that hovers over a shown pair's buttons, a mouse or a
+ *   pen in range, never a touch, as it enters one, and as it leaves them
  *   for anywhere but the canvas, whose own hover then takes over, or
- *   another shown pair, which reports itself.
+ *   another shown pair, which reports itself. The CSS passes the pointer
+ *   through the pair's box around its round buttons to the canvas.
  * @param canvas The canvas the scene renders to, which fills the viewport.
  * @param onFold Called on a press with the fold as the player sees it,
  *   `"mountain"` or `"valley"`, and the pair pressed.
  * @param onHover Called with the pair a hovering pointer enters, or with
- *   null as it leaves one for anywhere but the canvas or another pair.
+ *   null as it leaves one for anywhere but the canvas or another pair, and
+ *   the pointer's `pointerType`.
  * @returns acquire(), which returns a pair that is hidden and done fading,
  *   making one if none is, as createPair() returns it; holds(), which
  *   takes an element, or null, and returns true if it lies in a shown
@@ -122,11 +131,14 @@ export const connectFoldButtons = (canvas, onFold, onHover) => {
 
   /** #### Passes on a hovering pointer leaving a pair, unless for the paper
    * - Allocates nothing.
+   * @param pointerType The pointer's `pointerType`.
    * @param relatedTarget The element the pointer moves onto, or null if it
    *   leaves the window.
    */
-  const onLeave = (relatedTarget) => {
-    if (relatedTarget !== canvas && !holds(relatedTarget)) onHover(null);
+  const onLeave = (pointerType, relatedTarget) => {
+    if (relatedTarget !== canvas && !holds(relatedTarget)) {
+      onHover(null, pointerType);
+    }
   };
 
   /** #### Sets the paper colour's two shades, which every pair's theme takes
@@ -150,11 +162,12 @@ export const connectFoldButtons = (canvas, onFold, onHover) => {
 /** #### Creates one pair, hidden, after the canvas
  * - Allocates, so call it only when the pool has no free pair.
  * @param canvas The canvas, which the pair is inserted after.
- * @param onEnter Called with the pair as a hovering pointer, not a touch,
- *   enters it.
+ * @param onEnter Called with the pair, and the pointer's `pointerType`, as
+ *   a hovering pointer, not a touch, enters it.
  * @param onFold Called on a press with the fold and the pair.
- * @param onLeave Called with the element a hovering pointer, not a touch,
- *   moves onto as it leaves the pair, or null.
+ * @param onLeave Called with the pointer's `pointerType` and the element a
+ *   hovering pointer, not a touch, moves onto as it leaves the pair, or
+ *   null.
  * @returns The pair: its `placement`, `isStacked`, `lineIndex`, `x` and
  *   `y`, written by its owner before show(); hide(), isFree() and
  *   isShown(); holds(), which takes an element, or null, and returns true
@@ -288,10 +301,12 @@ const createPair = (canvas, onEnter, onFold, onLeave) => {
 
   // A touch never hovers, so only a mouse or a pen in range is reported.
   container.addEventListener("pointerenter", (event) => {
-    if (event.pointerType !== "touch") onEnter(pair);
+    if (event.pointerType !== "touch") onEnter(pair, event.pointerType);
   });
   container.addEventListener("pointerleave", (event) => {
-    if (event.pointerType !== "touch") onLeave(event.relatedTarget);
+    if (event.pointerType !== "touch") {
+      onLeave(event.pointerType, event.relatedTarget);
+    }
   });
   canvas.after(container);
 

@@ -18,7 +18,7 @@ in both modes.
 ## Current position
 
 Basic Gameplay Mode folds only by a press
-([Plan 24, Decision 6](../24-gameplay-folds.md#decisions)): every fold,
+([Plan 24, Decision 6](../../done/24-gameplay-folds.md#decisions)): every fold,
 the paper dart's 90° wings included, is made by one press of a Fold
 Button or a click on its lit line, and nothing folds live. A mouse
 press on a lit line that moves and is released on that line counts as

@@ -8,7 +8,7 @@ type: plan
 
 - The second of the four Basic Gameplay Mode plans, after
   [Plan 22](./22-gameplay-graph.md), whose designs, sheets and graphs it
-  puts on the page, and before [Plan 24](../todo/24-gameplay-folds.md), which
+  puts on the page, and before [Plan 24](./24-gameplay-folds.md), which
   folds them. It delivers the mode itself: a third mode radio, the
   Gameplay designs' own radios, each design's flat sheet printed with
   its whole crease pattern in its starting pose and colour, and the
@@ -30,7 +30,7 @@ type: plan
   own radios, so Presentation Mode returns to its own checked design,
   not to the one last played.
 - That settles the boot mode that the backlog's
-  [Boot mode, Fast Fold default and an early mouse reveal](../todo/backlog/20261116-boot-mode-and-mouse-reveal.md)
+  [Boot mode, Fast Fold default and an early mouse reveal](./backlog/20261116-boot-mode-and-mouse-reveal.md)
   left open; Plan 24 settles the rest of that item and closes it.
 - Needed because nothing on the page yet knows Gameplay Mode, and a
   design's sheet in Presentation Mode cannot stand in for its flat

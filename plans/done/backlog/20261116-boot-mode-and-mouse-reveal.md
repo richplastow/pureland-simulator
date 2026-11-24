@@ -36,3 +36,6 @@ In the app's final polish, or when Gameplay Mode settles the boot flow.
 
 - **2026-11-16T12:54:16Z** — **raised**: while drafting Plan 18, which
   boots into Sandbox Mode with Fast Fold ticked for its manual QA.
+- **2026-11-24T15:38:26Z** — **done**: resolved by
+  [Plan 24](../24-gameplay-folds.md), which shows the same buttons to
+  every pointer in Gameplay Mode, after Plan 23 settled the boot mode.

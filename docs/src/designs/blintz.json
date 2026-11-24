@@ -11,6 +11,7 @@
         "1/2"
       ],
       "halfTurns": "1",
+      "name": "top right corner",
       "to": [
         "1/2",
         "0"
@@ -23,6 +24,7 @@
         "-1/2"
       ],
       "halfTurns": "1",
+      "name": "bottom left corner",
       "to": [
         "-1/2",
         "0"
@@ -35,6 +37,7 @@
         "0"
       ],
       "halfTurns": "1",
+      "name": "top left corner",
       "to": [
         "0",
         "1/2"
@@ -47,6 +50,7 @@
         "0"
       ],
       "halfTurns": "1",
+      "name": "bottom right corner",
       "to": [
         "0",
         "-1/2"

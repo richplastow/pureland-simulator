@@ -1,6 +1,6 @@
 /**
  * @fileoverview
- * Connects the sandbox bar's Export, Undo, Redo and Unfold buttons, and
+ * Connects the fold bar's Undo, Redo, Unfold and Export buttons, and
  * their keyboard shortcuts, to the moves they make, keeps each button
  * disabled at its limit, and shows the export in its dialog.
  */
@@ -8,8 +8,8 @@
 // How long "Copy" reads "Copied" after a copy, in seconds.
 const COPIED_SECONDS = 1.5;
 
-/** #### Connects the sandbox bar's buttons, their shortcuts, and the export
- * - Each `<button>` in `.sandbox-bar`, `[data-undo]`, `[data-redo]`,
+/** #### Connects the fold bar's buttons, their shortcuts, and the export
+ * - Each `<button>` in `.fold-bar`, `[data-undo]`, `[data-redo]`,
  *   `[data-unfold]` and `[data-export]`, passes its press on.
  * - Export opens the `.export-dialog`, a modal `<dialog>`, with the text
  *   `onExport` returns in its read-only `<textarea>`. Its `[data-copy]`
@@ -20,13 +20,15 @@ const COPIED_SECONDS = 1.5;
  * - Ctrl+Z and Cmd+Z undo; Ctrl+Y, Ctrl+Shift+Z and Cmd+Shift+Z redo.
  *   Each cancels its default, so the browser's own undo stays out of it,
  *   and ignores a held key's repeats, as Escape does. They answer only
- *   while the bar shows, which is in Sandbox Mode alone, and the dialog is
- *   closed.
+ *   while the bar shows, which is in Gameplay Mode and Sandbox Mode, and
+ *   the dialog is closed.
  * - The bar starts hidden, by its `hidden` attribute, and its buttons
- *   disabled; setShown() shows or hides it.
+ *   disabled; setShown() shows or hides it. setExportShown() shows or
+ *   hides Export alone, by its own `hidden` attribute, since only Sandbox
+ *   Mode exports.
  * - setLimits() disables Undo, Unfold and Export at position 0, and Redo
  *   at the fold count, writing them only when they change.
- * - Throws at once if the page has no `.sandbox-bar` or `.export-dialog`,
+ * - Throws at once if the page has no `.fold-bar` or `.export-dialog`,
  *   the bar lacks one of its four buttons, or the dialog its `<textarea>`
  *   or its Copy button.
  * @param onExport Called on a press of Export; returns the text to export.
@@ -34,14 +36,15 @@ const COPIED_SECONDS = 1.5;
  * @param onUndo Called on a press of Undo or its shortcuts.
  * @param onUnfold Called on a press of Unfold.
  * @returns isExportOpen(), which returns true while the dialog is open;
- *   setLimits(), which takes the session's fold count and the target's
- *   position; and setShown(), which takes true to show the bar, or false
- *   to hide it.
+ *   setExportShown(), which takes true to show Export, or false to hide
+ *   it; setLimits(), which takes the fold count, a session's or a game's,
+ *   and the target's position; and setShown(), which takes true to show
+ *   the bar, or false to hide it.
  */
-export const connectSandboxBar = (onExport, onRedo, onUndo, onUnfold) => {
-  const bar = document.querySelector(".sandbox-bar");
+export const connectFoldBar = (onExport, onRedo, onUndo, onUnfold) => {
+  const bar = document.querySelector(".fold-bar");
   if (bar === null) {
-    throw new Error("No sandbox bar: .sandbox-bar");
+    throw new Error("No fold bar: .fold-bar");
   }
   const dialog = document.querySelector(".export-dialog");
   if (dialog === null) {
@@ -124,9 +127,16 @@ export const connectSandboxBar = (onExport, onRedo, onUndo, onUnfold) => {
    */
   const isExportOpen = () => dialog.open;
 
+  /** #### Shows or hides the Export button
+   * @param isShown True to show Export.
+   */
+  const setExportShown = (isShown) => {
+    exportButton.hidden = !isShown;
+  };
+
   /** #### Disables each button at its limit
    * - Writes the buttons only when their state changes.
-   * @param foldCount The session's fold count.
+   * @param foldCount The fold count, a session's or a game's.
    * @param position The target's position, from 0 to `foldCount`.
    */
   const setLimits = (foldCount, position) => {
@@ -151,12 +161,12 @@ export const connectSandboxBar = (onExport, onRedo, onUndo, onUnfold) => {
     bar.hidden = !isShown;
   };
 
-  return { isExportOpen, setLimits, setShown };
+  return { isExportOpen, setExportShown, setLimits, setShown };
 };
 
 /** #### Returns the button within an element that carries a data attribute
  * - Throws if the element has no such button.
- * @param parent The element to search, such as the `.sandbox-bar`.
+ * @param parent The element to search, such as the `.fold-bar`.
  * @param attribute The attribute's name, such as `data-undo`.
  * @returns The button.
  */

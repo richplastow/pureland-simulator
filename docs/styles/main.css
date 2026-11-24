@@ -17,7 +17,9 @@
   /* the toolbar's fade, as long as `PAPER_COLOR_FADE_SECONDS`, the paper's */
   --controls-fade-duration: 0.3s;
   --controls-gap: 0.5rem; /* between neighbouring controls, and swatches */
-  --controls-offset: 1.5rem; /* from the viewport's bottom edge */
+  /* the toolbar's from the viewport's bottom edge, the status line's from
+     its top */
+  --controls-offset: 1.5rem;
   /* the export dialog's widest, and its least gap to the viewport's sides */
   --export-dialog-max-width: 36rem;
   --export-dialog-margin: 1rem;
@@ -86,8 +88,10 @@ body {
 
 /*
  * Set by src/main.js while a mouse hovers where a press would belong to a
- * lit Fold Line, which takes the press instead of turning the paper. Before
- * the rule below, so a drag's grabbing cursor wins.
+ * lit Fold Line, which takes the press instead of turning the paper, and
+ * over that line's Fold Button, so stepping off the button onto the line
+ * keeps this cursor. Before the rule below, so a drag's grabbing cursor
+ * wins.
  */
 .scene[data-over-line] {
   cursor: pointer;
@@ -119,6 +123,11 @@ body {
  * writes `--fold-buttons-x` and `--fold-buttons-y`, the point on screen, in
  * CSS pixels, that the pair centres on. src/ui/fold-button-layout.js keeps
  * the pair wholly within the viewport, so both buttons stay in reach.
+ * The pointer passes through the pair's box, as through `.controls`, and
+ * only its round buttons take it, so the gap between them and the corners
+ * around each circle are the paper's, within the pair's hitzone, where a
+ * hover lights the pair's line and marks the button the proxy stands in
+ * for, as the margin of the hitzone beyond the box does.
  */
 .fold-buttons {
   position: fixed;
@@ -130,9 +139,19 @@ body {
     calc(var(--fold-buttons-x, 0px) - 50%)
     calc(var(--fold-buttons-y, 0px) - 50%);
   opacity: 1;
+  pointer-events: none;
   transition:
     opacity var(--fold-button-fade-duration),
     display var(--fold-button-fade-duration) allow-discrete;
+}
+
+/*
+ * Only a shown pair's buttons take the pointer: never the measured pair's,
+ * nor those of a pair fading out, which passes the pointer through to the
+ * canvas as soon as the fade starts.
+ */
+.fold-buttons:not([hidden], [data-measured]) button {
+  pointer-events: auto;
 }
 
 /*
@@ -145,12 +164,11 @@ body {
 
 /*
  * The one pair never shown, which src/ui/fold-buttons.js measures for a
- * pair's size: laid out, but invisible, out of reach of the pointer and of
- * assistive technology.
+ * pair's size: laid out, but invisible, out of reach of the pointer, by the
+ * rule above, and of assistive technology.
  */
 .fold-buttons[data-measured] {
   visibility: hidden;
-  pointer-events: none;
 }
 
 /* The pair fades in from nothing each time it is shown. */
@@ -163,13 +181,11 @@ body {
 /*
  * Hidden while its line shows no pair, by the `hidden` attribute, which the
  * `display` above would otherwise override, as with `.choices[hidden]`.
- * The transition holds `display` until the fade out ends, and the pointer
- * passes through to the canvas as soon as it starts.
+ * The transition holds `display` until the fade out ends.
  */
 .fold-buttons[hidden] {
   display: none;
   opacity: 0;
-  pointer-events: none;
 }
 
 /*
@@ -341,6 +357,28 @@ body {
 }
 
 /*
+ * The status line, src/ui/status.js's, which names the active fold in
+ * Gameplay Mode: fixed at the top centre of the viewport, as far from its
+ * top edge as the toolbar is from its bottom, in the toolbar's own font and
+ * colour, which it inherits. Its box fits its text, so the Fold Buttons'
+ * layout keeps clear of that alone; empty, its box has no size, so the
+ * layout ignores it. It is never `display: none`, which would take the live
+ * region out of the accessibility tree, so the screen reader could miss
+ * the text that shows it again. It fades with the toolbar, and the pointer
+ * always passes through it, which needs a rule at least as specific as the
+ * one above, and later.
+ */
+.controls > .status {
+  position: fixed;
+  inset-inline: 0;
+  top: var(--controls-offset);
+  width: fit-content;
+  margin: 0 auto;
+  text-align: center;
+  pointer-events: none;
+}
+
+/*
  * The "Fold lines" and "Fast Fold" checkboxes sit beside the choices,
  * centred on their line. Only the bar's own labels: the choices' labels sit
  * within `.choices`.
@@ -383,21 +421,22 @@ body {
 }
 
 /*
- * The sandbox bar, shown in Sandbox Mode alone, after the pattern choices:
- * Undo, Redo, Unfold and Export, drawn as the choices are, as are the
- * export dialog's buttons. Its `hidden` attribute needs this rule, as
- * `.choices[hidden]` does.
+ * The fold bar, shown in Gameplay Mode and Sandbox Mode, after the Gameplay
+ * designs or the patterns: Undo, Redo, Unfold and, in Sandbox Mode alone,
+ * Export, drawn as the choices are, as are the export dialog's buttons. Its
+ * `hidden` attribute needs this rule, as `.choices[hidden]` does; Export's
+ * needs none, as no rule here sets a button's `display`.
  */
-.sandbox-bar {
+.fold-bar {
   display: flex;
   gap: var(--controls-gap);
 }
 
-.sandbox-bar[hidden] {
+.fold-bar[hidden] {
   display: none;
 }
 
-.sandbox-bar button,
+.fold-bar button,
 .export-dialog button {
   padding: var(--choice-padding);
   border: var(--choice-border-width) solid CanvasText;
@@ -409,20 +448,20 @@ body {
   transition: background-color var(--choice-hover-duration);
 }
 
-.sandbox-bar button:hover:enabled,
+.fold-bar button:hover:enabled,
 .export-dialog button:hover:enabled {
   background-color: var(--choice-hover-color);
 }
 
 /* A button at its limit is greyed out in the system's disabled colour. */
-.sandbox-bar button:disabled {
+.fold-bar button:disabled {
   border-color: GrayText;
   color: GrayText;
   cursor: default;
 }
 
 /*
- * The export dialog, made modal by src/ui/sandbox-bar.js, a child of the
+ * The export dialog, made modal by src/ui/fold-bar.js, a child of the
  * page's body, so the toolbar's fade and pointer rules never reach it. It
  * fits the viewport at any width: its text box fills its width, and the
  * JSON scrolls within the box. Laid out only while `[open]`, as a `display`

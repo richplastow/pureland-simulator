@@ -70,8 +70,10 @@ export const YACHT = Object.freeze({
   leanRadians: LEAN_RADIANS,
   start: Object.freeze({ rollRadians: 0, side: "back" }),
   steps: Object.freeze([
-    createFold(BOTTOM_LEFT, "all", TOP_RIGHT, "valley"),
-    createFold(TOP_RIGHT, { movedBy: 0 }, SAIL_FOOT, "valley"),
-    createFold(HULL_RIGHT, "all", SAIL_CORNER, "valley"),
+    createFold(BOTTOM_LEFT, "all", TOP_RIGHT, "valley", { name: "diagonal" }),
+    createFold(TOP_RIGHT, { movedBy: 0 }, SAIL_FOOT, "valley", {
+      name: "sail",
+    }),
+    createFold(HULL_RIGHT, "all", SAIL_CORNER, "valley", { name: "hull" }),
   ]),
 });

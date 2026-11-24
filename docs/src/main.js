@@ -32,6 +32,16 @@
  * and a direction blocked at once shows no button. Undo, Redo and Unfold,
  * and their shortcuts, walk the session back and forth, and Export shows
  * the folds the paper shows as a JSON design file.
+ * In Gameplay Mode at rest, the Fold Lines are the open edges of the
+ * game's node in the design's graph, and every one that fits shows one
+ * Fold Button, for every pointer: the one way its fold goes, as the player
+ * sees it. A press, a click on the lit line, Enter, or Up or Down that
+ * way, folds it at the design's own angle, recutting the gameplay sheet
+ * along the game's path, which fades its lines out at the graph's goal;
+ * nothing folds live. A tap, an unserved click or Left and Right make a
+ * line active, and the status line names its fold. A new game starts on
+ * every choice of a Gameplay design or of the mode, and Undo, Redo and
+ * Unfold walk it back and forth.
  */
 
 import {
@@ -56,6 +66,11 @@ import { foldPositionAt, maxPaperRadius } from "./fold/pose.js";
 import { stepSequence } from "./fold/stepper.js";
 import { buildGraph } from "./gameplay/graph.js";
 import { cutPath, gameplaySheetId } from "./gameplay/path.js";
+import {
+  createGame,
+  foldAt as foldGameAt,
+  openEdges,
+} from "./gameplay/session.js";
 import { connectDrag } from "./input/drag.js";
 import { connectMouseDetection } from "./input/mouse.js";
 import { connectPick } from "./input/pick.js";
@@ -97,6 +112,7 @@ import { connectColorSwatches } from "./ui/color-swatches.js";
 import { connectControlsToggle } from "./ui/controls-toggle.js";
 import { connectDesignRadios } from "./ui/design-radios.js";
 import { connectFastFold } from "./ui/fast-fold.js";
+import { connectFoldBar } from "./ui/fold-bar.js";
 import {
   PAIR_GAP_PX,
   PAIR_HITZONE_PX,
@@ -106,12 +122,12 @@ import {
   sideOf,
   zoneContains,
 } from "./ui/fold-button-layout.js";
-import { connectFoldButtons } from "./ui/fold-buttons.js";
+import { connectFoldButtons, FOLD_BUTTON_LABELS } from "./ui/fold-buttons.js";
 import { connectFoldLinesToggle } from "./ui/fold-lines-toggle.js";
 import { connectGameplayRadios } from "./ui/gameplay-radios.js";
 import { connectModeRadios } from "./ui/mode-radios.js";
 import { connectPatternRadios } from "./ui/pattern-radios.js";
-import { connectSandboxBar } from "./ui/sandbox-bar.js";
+import { connectStatus } from "./ui/status.js";
 
 // Raised above the horizontal XZ plane, turned from +Z towards +Y.
 const CAMERA_ELEVATION_RADIANS = MathUtils.degToRad(20);
@@ -141,6 +157,7 @@ const PICK_DISTANCE_METERS = 0.008;
 
 const canvas = document.querySelector(".scene");
 const controls = document.querySelector(".controls");
+const say = connectStatus();
 
 // Every pattern, keyed by its `id`, for Sandbox Mode's sessions on it.
 const patterns = Object.fromEntries(
@@ -291,11 +308,18 @@ let mode = "gameplay";
 // pattern or Sandbox Mode is chosen, which discards it without a warning.
 let session = createSession();
 
-// The state the paper rests in, in Sandbox Mode, found once per rest state:
-// the flat faces as they lie, which say which side of the paper shows
-// where; the lines its lattice can fold along there, each line's sweep
-// limits, and each line's segments, seen from each side of the paper, in
-// the same order; the spans of those lines that are folds, with paper on
+// Gameplay Mode's game: the folds pressed so far, with any undone tail kept
+// for Redo, and the graph's node after each, on the Gameplay design the
+// target names. A new one starts whenever a Gameplay design or Gameplay
+// Mode is chosen, which discards the old without a warning.
+let game = createGame(graphs[firstGameplayDesign.id]);
+
+// The state the paper rests in, in Gameplay Mode or Sandbox Mode, found
+// once per rest state: the flat faces as they lie, which say which side of
+// the paper shows where; the lines it can fold along there, the game's
+// open edges or those of the pattern's lattice, each line's limits, and
+// each line's segments, seen from each side of the paper, in the same
+// order; the spans of those lines that are folds, with paper on
 // both sides, which a press or a hover picks from, all together and per
 // line, in the same order as the lines; the Fold Lines, those with a span,
 // which the arrow keys cycle; and the stage's centre, which the pose
@@ -484,7 +508,8 @@ new ResizeObserver(([entry]) => {
  * - Drops a live fold first, restoring the rest sheet.
  * @param choice The choice: `colorId`, or null for none; and `target`,
  *   its `position` and `sheetId`, or null for flat. A Gameplay design's
- *   choice also carries its `designId`, which is not read here.
+ *   choice also carries its `designId`, which chooseGameplayDesign()
+ *   reads.
  */
 const choose = ({ colorId, target }) => {
   dropLive();
@@ -505,24 +530,48 @@ const choose = ({ colorId, target }) => {
 const choosePattern = (choice) => {
   session = createSession();
   choose(choice);
-  writeSandboxBar();
+  writeFoldBar();
+};
+
+/** #### Passes a Gameplay design's choice on, starting a new game of it
+ * - Discards the game so far without a warning, even on choosing the
+ *   design already checked, and leaves the gameplay sheet in `sheets` as
+ *   it is, since the paper may still be unfolding on it towards the
+ *   choice's position 0; the next fold, made at position 0, replaces it.
+ * - A choice can arrive twice, and the second starts another empty game.
+ * @param choice The Gameplay design's choice, as choose() takes it, with
+ *   its `designId`.
+ */
+const chooseGameplayDesign = (choice) => {
+  game = createGame(graphs[choice.designId]);
+  choose(choice);
+  writeFoldBar();
 };
 
 const checkedDesignChoice = connectDesignRadios(PAPER_COLORS, choose);
-const checkedGameplayChoice = connectGameplayRadios(PAPER_COLORS, choose);
+const checkedGameplayChoice = connectGameplayRadios(
+  PAPER_COLORS,
+  chooseGameplayDesign,
+);
 const checkedPatternChoice = connectPatternRadios(PAPER_COLORS, choosePattern);
 
 /** #### Folds a line as far as it goes, as a Fold Button says, recutting
  * the sheet
- * - The fold is the line, `from` and `to` as the lattice oriented them,
- *   the button's fold turned into the front's terms by the side that
- *   faced the camera when its pair was placed, flat if its sweep limit is
- *   a half turn and to its limit otherwise. It replaces the session with
- *   one that keeps the folds before the paper's position, k, then this
- *   fold, recuts the pattern's sheet from it, and sets the target to
- *   k + 1.
+ * - In Sandbox Mode, the fold is the line, `from` and `to` as the lattice
+ *   oriented them, the button's fold turned into the front's terms by the
+ *   side that faced the camera when its pair was placed, flat if its
+ *   sweep limit is a half turn and to its limit otherwise. It replaces the
+ *   session with one that keeps the folds before the paper's position, k,
+ *   then this fold, and recuts the pattern's sheet from it.
+ * - In Gameplay Mode, the line is a game's open edge, whose fold is the
+ *   design's own, at the design's angle. It replaces the game with one
+ *   that keeps the folds before k, then this fold, and recuts the gameplay
+ *   sheet along the game's whole path, finished if the path ends at the
+ *   graph's goal, so its lines fade out there.
+ * - Either way it sets the target to k + 1.
  * - Does nothing for a direction whose limit is under `SNAP_RADIANS`,
- *   which shows no button.
+ *   which shows no button: in Gameplay Mode, the direction the edge does
+ *   not fold.
  * - Swaps the new sheet in at once, at rest at k, before the step starts:
  *   both sheets are cut along the same first k folds, so the new one,
  *   posed at k, covers the same paper, in the same order; only heights in
@@ -542,18 +591,25 @@ const foldLine = (line, isFrontFacing, type) => {
   if (!canPick() || limitOf(line, frontType) < SNAP_RADIANS) return;
 
   const { position, sheetId } = sequenceState;
-  const { from, to } = line;
-  session = foldAt(session, position, {
-    from,
-    targetRadians: limitOf(line, frontType),
-    to,
-    type: frontType,
-  });
-  sheets[sheetId] = cutSession(patterns[sheetId], session);
+  if (mode === "gameplay") {
+    const graph = graphs[game.designId];
+    game = foldGameAt(game, graph, position, line.fold);
+    const isGoal = game.nodeIds.at(-1) === graph.goalNodeId;
+    sheets[sheetId] = cutPath(sheets[game.designId], game.path, isGoal);
+  } else {
+    const { from, to } = line;
+    session = foldAt(session, position, {
+      from,
+      targetRadians: limitOf(line, frontType),
+      to,
+      type: frontType,
+    });
+    sheets[sheetId] = cutSession(patterns[sheetId], session);
+  }
   sequenceTarget.position = position + 1;
   clearPick();
   writeSequenceState();
-  writeSandboxBar();
+  writeFoldBar();
 };
 
 /** #### Returns the button a line's pair hides, seen from one side
@@ -576,7 +632,19 @@ const hiddenButtonOf = (line, isFrontFacing) => {
   return null;
 };
 
+/** #### Returns the one button a line's pair shows in Gameplay Mode
+ * - A game's open edge folds one way only, so its pair hides the other
+ *   button, as hiddenButtonOf() finds it.
+ * - Allocates nothing.
+ * @param line The line, from `restLines`.
+ * @param isFrontFacing True if the camera faces the paper's front.
+ * @returns `"mountain"` or `"valley"`.
+ */
+const shownButtonOf = (line, isFrontFacing) =>
+  hiddenButtonOf(line, isFrontFacing) === "mountain" ? "valley" : "mountain";
+
 /** #### Returns how far a line can fold one way before it meets a wall
+ * - In Gameplay Mode, the edge's own angle its own way, and 0 the other.
  * - Allocates nothing.
  * @param line The line, from `restLines`.
  * @param type The fold in the front's terms, `"mountain"` or `"valley"`.
@@ -771,7 +839,7 @@ const commitLive = () => {
   clearPick();
   writeSequenceState();
   enterRest();
-  writeSandboxBar();
+  writeFoldBar();
 };
 
 /** #### Marks the live fold ended, and lets its cuts go
@@ -845,11 +913,14 @@ const writeLivePose = () => {
 // A press on a pair folds its line: the active line's, by the side that
 // faced the camera at the pick, or a Fast Fold pair's line, by the side
 // that faced it at the layout, with no activation. A pointer hovering over
-// a pair lights the pair's line, as the paper beside the pair does, while
-// the button itself shows the hover, so the proxy marks nothing and the
-// canvas's cursor is not the line's; over the active line's pair, its own
-// strip stays lit. Leaving the pair for anywhere but the paper puts the
-// light out, as leaving the canvas does.
+// a pair's button lights the pair's line, as the paper around it does, while
+// the button itself shows the hover, so the proxy marks nothing; over the
+// active line's pair, its own strip stays lit. A mouse there leaves the
+// canvas marked over the lit line, as the paper around the button is: the
+// browser picks the canvas's cursor before the canvas's own hover runs, so
+// a mark set only then would show the grab cursor as the mouse steps off
+// the button onto its line. Leaving the pair for anywhere but the paper
+// puts the light out, as leaving the canvas does.
 const foldButtons = connectFoldButtons(
   canvas,
   (type, pair) => {
@@ -860,15 +931,16 @@ const foldButtons = connectFoldButtons(
     const line = restFoldLines[pair.placement.lineIndex];
     if (line !== undefined) foldLine(line, layoutFrontFacing, type);
   },
-  (pair) => {
+  (pair, pointerType) => {
     if (!canPick()) return;
 
     const line =
       pair === null || pair === activePair
         ? null
         : (restFoldLines[pair.placement.lineIndex] ?? null);
-    light(line === activeLine ? null : line, pick.facesFront());
-    setOverLine(false);
+    const litLine = line === activeLine ? null : line;
+    light(litLine, pick.facesFront());
+    setOverLine(pointerType === "mouse" && litLine !== null);
     setProxied(null, null);
   },
 );
@@ -890,9 +962,12 @@ const fastFold = connectFastFold(
 // which the move's own hover runs, since detection comes first. Only an
 // active line needs a layout, to give its pair back if it was one of the
 // touch layout's: a layout with no line active would fade the nearby pairs
-// the move has just shown.
+// the move has just shown. Gameplay Mode keeps the touch layout for every
+// pointer, so there it hides and changes nothing.
 connectMouseDetection(() => {
   hasMouse = true;
+  if (mode === "gameplay") return;
+
   hideFastPairs();
   if (activeLine !== null) isLayoutStale = true;
 });
@@ -900,10 +975,11 @@ connectMouseDetection(() => {
 // Export writes the folds the paper shows, or is folding to, those before
 // the target's position, never the undone tail kept for Redo, as a design
 // file of the pattern, under a new id and with no note, which a person adds
-// by hand. Undo, Redo and Unfold move only the target, so a step under way
-// finishes first, and repeated presses add up, each playing in turn. Each
-// drops a live fold first.
-const sandboxBar = connectSandboxBar(
+// by hand. Undo, Redo and Unfold move only the target, between 0 and the
+// fold count, the game's or the session's, so a step under way finishes
+// first, and repeated presses add up, each playing in turn. Each drops a
+// live fold first.
+const foldBar = connectFoldBar(
   () =>
     writeDesignFile(crypto.randomUUID(), patterns[sequenceTarget.sheetId], {
       folds: session.folds.slice(0, sequenceTarget.position),
@@ -912,48 +988,57 @@ const sandboxBar = connectSandboxBar(
     dropLive();
     sequenceTarget.position = Math.min(
       sequenceTarget.position + 1,
-      session.folds.length,
+      foldCount(),
     );
-    writeSandboxBar();
+    writeFoldBar();
   },
   () => {
     dropLive();
     sequenceTarget.position = Math.max(sequenceTarget.position - 1, 0);
-    writeSandboxBar();
+    writeFoldBar();
   },
   () => {
     dropLive();
     sequenceTarget.position = 0;
-    writeSandboxBar();
+    writeFoldBar();
   },
 );
 
-/** #### Writes the sandbox bar's limits from the target and the session
- * - Undo and Unfold stop at position 0, and Redo at the session's fold
- *   count.
+/** #### Returns the folds made so far, with any undone tail, in the mode
+ * - The game's in Gameplay Mode, and the session's otherwise.
+ * - Allocates nothing.
+ * @returns The fold count.
  */
-const writeSandboxBar = () => {
-  sandboxBar.setLimits(session.folds.length, sequenceTarget.position);
+const foldCount = () =>
+  mode === "gameplay" ? game.path.length : session.folds.length;
+
+/** #### Writes the fold bar's limits from the target and the fold count
+ * - Undo and Unfold stop at position 0, and Redo at the fold count, the
+ *   game's in Gameplay Mode and the session's in Sandbox Mode.
+ */
+const writeFoldBar = () => {
+  foldBar.setLimits(foldCount(), sequenceTarget.position);
 };
 
 /** #### Applies a mode: its fold lines, its toolbar, and its choice
  * - Forces the fold lines on in Gameplay Mode and Sandbox Mode, or
- *   releases them in Presentation Mode, shows the sandbox bar and the
- *   "Fast Fold" checkbox in Sandbox Mode only, and passes on the choice of
- *   the checked Gameplay design, design or pattern, as if that radio had
- *   been chosen.
+ *   releases them in Presentation Mode, shows the fold bar in those two
+ *   modes, its Export and the "Fast Fold" checkbox in Sandbox Mode only,
+ *   and passes on the choice of the checked Gameplay design, design or
+ *   pattern, as if that radio had been chosen.
  * - A mode can arrive twice, and does nothing the second time but empty an
- *   empty session.
+ *   empty session or start another empty game.
  * @param chosenMode `"gameplay"`, `"presentation"` or `"sandbox"`.
  */
 const chooseMode = (chosenMode) => {
   mode = chosenMode;
   forceLinesOn(mode !== "presentation");
-  sandboxBar.setShown(mode === "sandbox");
+  foldBar.setShown(mode !== "presentation");
+  foldBar.setExportShown(mode === "sandbox");
   fastFold.setShown(mode === "sandbox");
   switch (mode) {
     case "gameplay":
-      choose(checkedGameplayChoice());
+      chooseGameplayDesign(checkedGameplayChoice());
       break;
     case "presentation":
       choose(checkedDesignChoice());
@@ -970,9 +1055,9 @@ connectModeRadios(chooseMode);
 chooseMode("gameplay");
 
 /** #### Returns true if the pairs can be laid out now
- * - In Sandbox Mode, with the lines found for the rest state, the
- *   sequence state at its target, no stretch, fade or spin reset under
- *   way, no drag turning the paper, and no live fold showing.
+ * - In Gameplay Mode or Sandbox Mode, with the lines found for the rest
+ *   state, the sequence state at its target, no stretch, fade or spin
+ *   reset under way, no drag turning the paper, and no live fold showing.
  * - Allocates nothing.
  * @returns True if the scene rests for a layout.
  */
@@ -999,6 +1084,8 @@ const canPick = () =>
  * - Replaces any active line, whose pair fades, or, if it is one of the
  *   touch layout's, stays without its emphasis. The hover's light goes
  *   out, and any remembered keyboard pick is forgotten.
+ * - In Gameplay Mode, the status line names the fold, as statusOf() words
+ *   it.
  * - The caller has written `pickPoint`, the point the pair is placed by:
  *   the click, or the middle of the line's longest span for the keyboard;
  *   and `foldedPoint`, the same point in the folded plane, where the side
@@ -1012,7 +1099,8 @@ const canPick = () =>
 const activate = (line, isFrontFacing, isByKeyboard) => {
   // A keyboard pick among the touch layout's pairs, after a pick that hid
   // them, needs them laid out again.
-  const wasHidingTouchPairs = activeLine !== null && !isActiveByKeyboard;
+  const wasHidingTouchPairs =
+    activeLine !== null && !isAmongTouchPairs(isActiveByKeyboard);
   if (isByKeyboard && isAmongTouchPairs(true) && wasHidingTouchPairs) {
     isLayoutStale = true;
   }
@@ -1034,11 +1122,30 @@ const activate = (line, isFrontFacing, isByKeyboard) => {
     segmentsOf(line, isFrontFacing),
   );
   showActivePair();
+  if (mode === "gameplay") say(statusOf(line, isFrontFacing));
+};
+
+/** #### Words a game's open edge for the status line
+ * - The fold as the player sees it, in its Fold Button's label, then its
+ *   name, read from the design's own sheet, since the gameplay sheet's
+ *   folds run in the path's order: "Valley fold: left corner"; or the fold
+ *   alone, for one with no name.
+ * - Allocates a string, so call it only when a line becomes active.
+ * @param line The edge, from `restFoldLines`.
+ * @param isFrontFacing True if the camera faces the paper's front.
+ * @returns The text.
+ */
+const statusOf = (line, isFrontFacing) => {
+  const words = FOLD_BUTTON_LABELS[seenType(isFrontFacing, line.type)];
+  const { name } = sheets[game.designId].folds[line.fold];
+
+  return name === undefined ? words : `${words}: ${name}`;
 };
 
 /** #### Clears the active line, if there is one, and the hover's light
  * - Its pair fades, or, if it is one of the touch layout's, stays without
  *   its emphasis; Fast Fold's pairs are laid out again at the next frame.
+ *   The status line empties.
  * - Allocates nothing, so it is safe on every pointer move.
  * @returns True if there was an active line to clear.
  */
@@ -1046,6 +1153,7 @@ const clearPick = () => {
   const hadPick = activeLine !== null;
   if (hadPick) {
     deactivate();
+    say("");
     isLayoutStale = true;
   }
   light(null, true);
@@ -1087,15 +1195,17 @@ const hideFastPairs = () => {
   setProxied(null, null);
 };
 
-/** #### Returns true if the active pick keeps Fast Fold's touch layout
- * - A keyboard pick, with Fast Fold ticked and no mouse detected, shows
- *   its line's pair among the touch layout's rather than suspending it.
+/** #### Returns true if the active pick keeps the touch layout
+ * - In Gameplay Mode, every pick, by any pointer or the keyboard, shows its
+ *   line's pair among the touch layout's, which never suspends.
+ * - In Sandbox Mode, a keyboard pick, with Fast Fold ticked and no mouse
+ *   detected, does so rather than suspending it.
  * - Allocates nothing.
  * @param isByKeyboard True if the pick is the keyboard's.
  * @returns True if the touch layout stays.
  */
 const isAmongTouchPairs = (isByKeyboard) =>
-  isByKeyboard && fastFold.isOn() && !hasMouse;
+  mode === "gameplay" || (isByKeyboard && fastFold.isOn() && !hasMouse);
 
 /** #### Returns true if the paper shows its white side at a point on screen
  * - Where the pair at that point takes its colours from. With no paper
@@ -1120,10 +1230,13 @@ const isOverWhiteAt = (x, y) => {
 /** #### Lays out the pairs for the scene at rest, after a layout event
  * - Projects the Fold Lines' spans to the screen, reads the toolbar's
  *   controls, none while Escape has it hidden, measures a pair, and notes
- *   the side facing the camera. Then lays out Fast Fold's touch layout,
- *   unless a mouse is detected, Fast Fold is unticked or an active line
- *   suspends it, and hides Fast Fold's pairs otherwise; the nearby layout
- *   waits for the next mouse move. Places the active line's pair afresh.
+ *   the side facing the camera. Then lays out the touch layout: always in
+ *   Gameplay Mode, whose pairs each show one button, so the box laid out
+ *   is one button's, each placed middle first; in Sandbox Mode, unless a
+ *   mouse is detected, Fast Fold is unticked or an active line suspends
+ *   it. Otherwise it hides Fast Fold's pairs; the nearby layout waits for
+ *   the next mouse move.
+ *   Places the active line's pair afresh.
  * - Call it after a frame's render, which updates the camera's matrices.
  * - Allocates, so call it only on a layout event.
  */
@@ -1147,13 +1260,14 @@ const layOut = () => {
         .map((control) => control.getBoundingClientRect())
         .filter(({ height, width }) => width > 0 && height > 0);
   foldButtons.measure(space.pair);
+  if (mode === "gameplay") space.pair.widthPx = space.pair.heightPx;
   layoutFrontFacing = pick.facesFront();
 
-  const isTouch = fastFold.isOn() && !hasMouse;
+  const isTouch = mode === "gameplay" || (fastFold.isOn() && !hasMouse);
   const isSuspended =
     activeLine !== null && !isAmongTouchPairs(isActiveByKeyboard);
   if (isTouch && !isSuspended) {
-    fastFold.layOutTouch(screenLines, space);
+    fastFold.layOutTouch(screenLines, space, mode === "gameplay");
   } else {
     hideFastPairs();
   }
@@ -1363,14 +1477,15 @@ const writePickColors = () => {
 
 writePickColors();
 
-/** #### Returns true if the sequence state rests at its target in Sandbox Mode
- * - At the target's `sheetId` and `position`, with no stretch or fade of
- *   the lines under way.
+/** #### Returns true if the sequence state rests at its target, folding
+ * - In Gameplay Mode or Sandbox Mode, at the target's `sheetId` and
+ *   `position`, with no stretch or fade of the lines under way.
+ *   Presentation Mode never rests, since nothing folds by hand there.
  * - Allocates nothing, so it is safe on the per-frame path.
  * @returns True if at rest.
  */
 const isSequenceAtRest = () =>
-  mode === "sandbox" &&
+  mode !== "presentation" &&
   sequenceState.sheetId === sequenceTarget.sheetId &&
   sequenceState.position === sequenceTarget.position &&
   sequenceState.stretchProgress === 1 &&
@@ -1378,17 +1493,15 @@ const isSequenceAtRest = () =>
 
 /** #### Finds what the paper shows where it now rests, and what can fold
  * - The flat faces placed at the position's stage, the lines the paper
- *   can fold along there, each line's sweep limits, each line's segments
- *   seen from each side, and their fold spans, once per rest state, so a
+ *   can fold along there, each line's limits, each line's segments seen
+ *   from each side, and their fold spans, once per rest state, so a
  *   pointer move compares the hit with at most a few tens of lines, and
  *   lights one by lookup. Also the stage's centre.
  * - A face a fold that stops short stood no longer lies in the folded
  *   plane, so the lines, their inks and the picks read the flat faces
- *   alone. A line must hold every standing flap's hinge, as
- *   foldableLines() sets out; each direction's limit is how far its fold
- *   turns before it sweeps into a standing face, as sweepLimitRadians()
- *   finds it, π with none standing. A line blocked both ways folds
- *   nothing, so is left out.
+ *   alone.
+ * - The lines, and their limits, depend on the mode, as gameplayLines()
+ *   and sandboxLines() find them.
  * - Forgets the remembered keyboard pick, whose line is gone, and marks
  *   the layout stale.
  * - Allocates, so call it only when the paper comes to rest, or a live
@@ -1403,7 +1516,68 @@ const enterRest = () => {
     (_face, i) =>
       standingFoldOf(sheet.folds, sheet.faces[i].movedBy, stage) === -1,
   );
-  const flatPolygons = restFaces.map(({ polygon }) => polygon);
+  const { limits, lines } =
+    mode === "gameplay"
+      ? gameplayLines(position)
+      : sandboxLines(restFaces, sheet, sheetId, stage);
+  restLimits = limits;
+  restLines = lines;
+  restSegments = restLines.map((line) => ({
+    back: litSegments(restFaces, false, line),
+    front: litSegments(restFaces, true, line),
+  }));
+  restSpans = pickSpans(
+    restLines,
+    restSegments.map(({ front }) => front),
+  );
+  restSpansByLine = restLines.map((line) =>
+    restSpans.filter((span) => span.line === line),
+  );
+  restFoldLines = restLines.filter((_line, i) => restSegments[i].front.length);
+  rememberedLine = null;
+  screenLines = NONE_AT_REST;
+  isLayoutStale = true;
+};
+
+/** #### Returns the lines a game's paper can fold along at rest, and limits
+ * - The game's open edges at the position, in fold order, each the line
+ *   itself, with its `from` and `to` in the folded plane. Each edge folds
+ *   one way, so its limits are its fold's `targetRadians` its own way and
+ *   0 the other, which hides that button.
+ * - No lattice, hinge rule or sweep test: the graph's standing rule
+ *   already keeps every flat fold away from a standing flap.
+ * - Allocates, so call it only from enterRest().
+ * @param position The paper's position, from 0 to the game's fold count.
+ * @returns `lines`, the edges, and `limits`, per line in the same order,
+ *   `{ mountain, valley }` in the front's terms, in radians.
+ */
+const gameplayLines = (position) => {
+  const lines = openEdges(game, graphs[game.designId], position);
+  const limits = lines.map(({ targetRadians, type }) =>
+    type === "mountain"
+      ? { mountain: targetRadians, valley: 0 }
+      : { mountain: 0, valley: targetRadians },
+  );
+
+  return { limits, lines };
+};
+
+/** #### Returns the lines a pattern's paper can fold along at rest, and limits
+ * - The pattern's lattice lines that hold every standing flap's hinge, as
+ *   foldableLines() sets out. Each direction's limit is how far its fold
+ *   turns before it sweeps into a standing face, as sweepLimitRadians()
+ *   finds it, π with none standing. A line blocked both ways folds
+ *   nothing, so is left out.
+ * - Allocates, so call it only from enterRest().
+ * @param faces The flat faces at rest, as placedFaces() returns them.
+ * @param sheet The sandbox sheet the paper rests on.
+ * @param sheetId Its id, the pattern's.
+ * @param stage The stage it rests at.
+ * @returns `lines`, from foldableLines(), and `limits`, per line in the
+ *   same order, `{ mountain, valley }` in the front's terms, in radians.
+ */
+const sandboxLines = (faces, sheet, sheetId, stage) => {
+  const flatPolygons = faces.map(({ polygon }) => polygon);
   const walls = standingPolygons(sheet, stage);
   const limitTo = (line, type) =>
     sweepLimitRadians(
@@ -1425,23 +1599,8 @@ const enterRest = () => {
     lines.push(line);
     limits.push({ mountain, valley });
   }
-  restLimits = limits;
-  restLines = lines;
-  restSegments = restLines.map((line) => ({
-    back: litSegments(restFaces, false, line),
-    front: litSegments(restFaces, true, line),
-  }));
-  restSpans = pickSpans(
-    restLines,
-    restSegments.map(({ front }) => front),
-  );
-  restSpansByLine = restLines.map((line) =>
-    restSpans.filter((span) => span.line === line),
-  );
-  restFoldLines = restLines.filter((_line, i) => restSegments[i].front.length);
-  rememberedLine = null;
-  screenLines = NONE_AT_REST;
-  isLayoutStale = true;
+
+  return { limits, lines };
 };
 
 // Escape, while the export dialog is open, closes the dialog alone, which
@@ -1452,7 +1611,7 @@ const enterRest = () => {
 // laid out afresh around: the hidden toolbar leaves the paper alone on
 // screen. During a mouse drag, it leaves the drag to its release.
 connectControlsToggle(() => {
-  if (sandboxBar.isExportOpen()) return true;
+  if (foldBar.isExportOpen()) return true;
 
   easeKeyboardAngleBack();
   rememberedLine = null;
@@ -1488,13 +1647,19 @@ const writeSpin = () => {
 // it, and Left, Right or Escape first ease it back to flat, as a press or
 // a loss of focus does, while plain Up and Down fold as far as the line
 // goes at once in its place. Focus leaving the canvas puts a keyboard pick
-// away, and focus returning restores it.
+// away, and focus returning restores it. In Gameplay Mode, a mouse over a
+// lit line marks its one button, if shown, for the proxy, with no nearby
+// layout; Left and Right step in fold order; Enter, or Up or Down where
+// that is its way, presses the active line's button; and Shift with Up or
+// Down does nothing.
 const pick = connectPick(
   camera,
   canvas,
   {
     keepsHover: foldButtons.holds,
     onAngleKey: (step) => {
+      if (mode === "gameplay") return; // nothing folds live there
+
       if (!live.isActive) {
         if (activeLine === null || !canPick()) return;
 
@@ -1529,8 +1694,15 @@ const pick = connectPick(
       rememberedLine = line;
     },
     // The active line stays active through the fold's settling, its strip
-    // put out first, since a half turn slides the paper from under it.
+    // put out first, since a half turn slides the paper from under it. In
+    // Gameplay Mode, Enter presses the active line's one button.
     onCommitKey: () => {
+      if (mode === "gameplay") {
+        if (activePair === null || !canPick()) return;
+
+        activePair.press(shownButtonOf(activeLine, isPickFrontFacing));
+        return;
+      }
       if (!live.isActive || !live.isByKeyboard || live.isReleased) return;
 
       clearPick();
@@ -1573,6 +1745,20 @@ const pick = connectPick(
       light(line, isFrontFacing);
       setOverLine(isMouse && line !== null);
 
+      // Gameplay Mode's touch layout stays: the lit line's one button, if
+      // it shows, is the one the proxy stands in for.
+      if (mode === "gameplay") {
+        const pair =
+          isMouse && line !== null
+            ? fastFold.pairOf(restFoldLines.indexOf(line))
+            : null;
+        setProxied(
+          pair,
+          pair === null ? null : shownButtonOf(line, layoutFrontFacing),
+        );
+        return;
+      }
+
       const isNearby =
         isMouse && hit !== null && activeLine === null && fastFold.isOn();
       if (!isNearby || !hasMouse) {
@@ -1607,8 +1793,9 @@ const pick = connectPick(
 );
 
 /** #### Makes the line before or after the active one active, for Left or Right
- * - In the lattice's order, among the Fold Lines, wrapping round; with no
- *   line active, the first for Right or the last for Left.
+ * - Among the Fold Lines, in the lattice's order in Sandbox Mode and in
+ *   fold order in Gameplay Mode, wrapping round; with no line active, the
+ *   first for Right or the last for Left.
  * - Does nothing unless a line can be picked now.
  * - Allocates nothing, unless its pair is a new one.
  * @param step −1 for the line before, or 1 for the line after.
@@ -1651,7 +1838,10 @@ const pickKeyboardLine = (line, isFrontFacing) => {
 // Any other press is the drag's, which clears the active line and hides
 // the pairs as it starts, cancels a reset under way where it is, and takes
 // over at once; the pairs are laid out afresh once it ends. A double-click
-// starts a reset from where the spin is, hiding the pairs.
+// starts a reset from where the spin is, hiding the pairs. In Gameplay
+// Mode the proxy serves every line whose one button shows, and a claimed
+// press that moves folds nothing live: released on the line it went down
+// on, it acts as a click, and anywhere else it does nothing.
 connectDrag(canvas, {
   claimsPress: (x, y, pointerType) => {
     easeKeyboardAngleBack();
@@ -1668,6 +1858,13 @@ connectDrag(canvas, {
     claimYPx = y;
     isClaimFrontFacing = pick.facesFront();
     const index = restFoldLines.indexOf(target);
+    if (mode === "gameplay") {
+      claimedPair = fastFold.pairOf(index);
+      if (claimedPair !== null) {
+        claimedSide = shownButtonOf(target, layoutFrontFacing);
+      }
+      return true;
+    }
     claimedPair =
       activeLine === null && fastFold.isOn() && hasMouse
         ? fastFold.pairOf(index)
@@ -1677,6 +1874,11 @@ connectDrag(canvas, {
     return true;
   },
   onClaimedDrag: (x, y) => {
+    // Nothing folds live in Gameplay Mode: the press waits for its release.
+    if (mode === "gameplay") {
+      isClaimDragging = true;
+      return;
+    }
     if (!isClaimDragging) {
       isClaimDragging = true;
       const line = claimedLine;
@@ -1697,6 +1899,11 @@ connectDrag(canvas, {
     );
   },
   onClaimedDragCancel: () => {
+    if (mode === "gameplay") {
+      claimedLine = null;
+      isClaimDragging = false;
+      return;
+    }
     const isLiveDrag =
       isClaimDragging &&
       live.isActive &&
@@ -1706,6 +1913,18 @@ connectDrag(canvas, {
     if (isLiveDrag) releaseLive(0);
   },
   onClaimedDragEnd: (x, y) => {
+    // Released on the line it went down on, it acts as a click.
+    if (mode === "gameplay") {
+      isClaimDragging = false;
+      const isOnLine =
+        canPick() && targetAt(pick.hitAt(x, y), x, y) === claimedLine;
+      if (isOnLine) {
+        pressClaimedLine();
+      } else {
+        claimedLine = null;
+      }
+      return;
+    }
     const isLiveDrag =
       isClaimDragging &&
       live.isActive &&
@@ -1722,26 +1941,7 @@ connectDrag(canvas, {
       size < CANCEL_RADIANS ? 0 : Math.sign(radians) * snapAngleRadians(size),
     );
   },
-  onClaimedPress: () => {
-    const line = claimedLine;
-    claimedLine = null;
-    if (line === null || !canPick() || !restFoldLines.includes(line)) return;
-
-    const index = restFoldLines.indexOf(line);
-    const isServed =
-      claimedPair !== null &&
-      claimedPair.isShown() &&
-      claimedPair.placement.lineIndex === index;
-    if (isServed) {
-      claimedPair.press(claimedSide);
-      return;
-    }
-    pickPoint.copy(claimPoint);
-    foldedPoint[0] = claimPoint.x + restCentre[0];
-    foldedPoint[1] = claimPoint.y + restCentre[1];
-    activate(line, isClaimFrontFacing, false);
-    setOverLine(false);
-  },
+  onClaimedPress: () => pressClaimedLine(),
   onDrag: (deltaXPixels, deltaYPixels) => {
     clearPick();
     hideFastPairs();
@@ -1763,6 +1963,36 @@ connectDrag(canvas, {
   },
   onPress: pick.pressAt,
 });
+
+/** #### Acts on a claimed press released as a click
+ * - Where the proxy serves the line, presses the button on the side the
+ *   press went down on, or in Gameplay Mode the pair's one button;
+ *   otherwise makes the line active, its pair placed beside the press.
+ * - Does nothing unless a line can be picked now, and the line is still
+ *   one of the Fold Lines.
+ * - Allocates nothing, unless the active line's pair is a new one.
+ */
+const pressClaimedLine = () => {
+  const line = claimedLine;
+  claimedLine = null;
+  if (line === null || !canPick() || !restFoldLines.includes(line)) return;
+
+  const index = restFoldLines.indexOf(line);
+  const isServed =
+    claimedPair !== null &&
+    claimedPair.isShown() &&
+    claimedPair.placement.lineIndex === index;
+  if (isServed) {
+    claimedPair.press(claimedSide);
+    return;
+  }
+  pickPoint.copy(claimPoint);
+  foldedPoint[0] = claimPoint.x + restCentre[0];
+  foldedPoint[1] = claimPoint.y + restCentre[1];
+  activate(line, isClaimFrontFacing, false);
+  setOverLine(false);
+};
+
 canvas.addEventListener("dblclick", () => {
   startSpinReset(spinReset, spin);
   if (spinReset.progress < 1) hideFastPairs();

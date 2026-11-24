@@ -46,6 +46,8 @@ const SLOPE_TOP_RIGHT = [HALF_WIDTH - PACKET_HEIGHT, SNOW_Y];
  *   to the top; steps 3 and 4 fold the top right, then the top left,
  *   corner down through both halves, as the slopes; step 5 turns the paper
  *   over again, to show a coloured mountain with a white cap.
+ * - Names each fold as the player first sees the sheet, coloured side up,
+ *   so step 3's slope, on the right once turned over, is the left slope.
  * - Folds the middle before the corners, where the source folds the
  *   corners of one half first, so that the other half hides behind the
  *   mountain rather than showing white beside its slopes.
@@ -56,11 +58,17 @@ export const MOUNT_FUJI = Object.freeze({
   colorId: "green",
   id: "mount-fuji",
   steps: Object.freeze([
-    createFold([-HALF_WIDTH, SNOW_Y], "all", [HALF_WIDTH, SNOW_Y], "valley"),
+    createFold([-HALF_WIDTH, SNOW_Y], "all", [HALF_WIDTH, SNOW_Y], "valley", {
+      name: "snow",
+    }),
     TURN_OVER,
-    createFold(BOTTOM_RIGHT, "all", BOTTOM_LEFT, "valley"),
-    createFold(SLOPE_TOP_RIGHT, "all", BOTTOM_RIGHT, "valley"),
-    createFold(BOTTOM_LEFT, "all", SLOPE_TOP_LEFT, "valley"),
+    createFold(BOTTOM_RIGHT, "all", BOTTOM_LEFT, "valley", { name: "middle" }),
+    createFold(SLOPE_TOP_RIGHT, "all", BOTTOM_RIGHT, "valley", {
+      name: "left slope",
+    }),
+    createFold(BOTTOM_LEFT, "all", SLOPE_TOP_LEFT, "valley", {
+      name: "right slope",
+    }),
     TURN_OVER,
   ]),
 });

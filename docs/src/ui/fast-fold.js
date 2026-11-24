@@ -220,9 +220,12 @@ export const connectFastFold = (
    * @param lines The Fold Lines on screen, each line's `index` its index
    *   in this list.
    * @param space The space to lay out in.
+   * @param isMiddleFirst True to place each pair nearest its line's
+   *   middle, as placePairs() sets out; false, the default, furthest from
+   *   other lines and pairs.
    */
-  const layOutTouch = (lines, space) => {
-    const placements = placePairs(lines, space);
+  const layOutTouch = (lines, space, isMiddleFirst = false) => {
+    const placements = placePairs(lines, space, isMiddleFirst);
     const isTaken = placements.map(() => false);
     for (let i = shownCount - 1; i >= 0; i--) {
       const pair = shownPairs[i];

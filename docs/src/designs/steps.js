@@ -21,18 +21,26 @@ export const TURN_OVER = Object.freeze({ kind: "turn-over" });
  *   index in the design's `steps`.
  * @param to The fold line's end, `[x, y]` in metres.
  * @param type `"mountain"` or `"valley"`.
- * @param options Optional `targetRadians`, the finished angle in radians,
- *   180° by default, and `turns`, `"moving-side"` by default.
- * @returns The fold step, of `kind` `"fold"`.
+ * @param options Optional `name`, a few plain words saying where the fold
+ *   is as the player first sees the sheet in Gameplay Mode, none by
+ *   default; `targetRadians`, the finished angle in radians, 180° by
+ *   default; and `turns`, `"moving-side"` by default.
+ * @returns The fold step, of `kind` `"fold"`, with a `name` key only when
+ *   one is given.
  */
 export const createFold = (from, layers, to, type, options = {}) => {
-  const { targetRadians = FLAT_FOLD_RADIANS, turns = "moving-side" } = options;
+  const {
+    name,
+    targetRadians = FLAT_FOLD_RADIANS,
+    turns = "moving-side",
+  } = options;
 
   // Object.freeze() returns a string, such as "all", unchanged.
   return Object.freeze({
     from: Object.freeze(from),
     kind: "fold",
     layers: Object.freeze(layers),
+    ...(name === undefined ? {} : { name }),
     targetRadians,
     to: Object.freeze(to),
     turns,

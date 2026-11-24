@@ -210,7 +210,7 @@ type: plan
    restored, shown in Sandbox Mode only through its label's `hidden`,
    which needs a rule as `.choices[hidden]` has. The boot mode, the
    default and revealing the mouse early are
-   [a backlog item](../todo/backlog/20261116-boot-mode-and-mouse-reveal.md)
+   [a backlog item](./backlog/20261116-boot-mode-and-mouse-reveal.md)
    for the final polish.
 10. **Mouse detection is one-way per load.** A window listener sets it
     on the first `pointermove` or `pointerdown` with `pointerType`

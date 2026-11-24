@@ -7,7 +7,7 @@ type: plan
 ## Context
 
 - The last of the four Basic Gameplay Mode plans, after
-  [Plan 24](./24-gameplay-folds.md), whose folding it judges. It
+  [Plan 24](../done/24-gameplay-folds.md), whose folding it judges. It
   delivers the game: dead ends that cost a life and close behind the
   player, three lives and one hint per design, a Hint button, points at
   the goal, and a Next button to the next design, with every outcome
@@ -110,7 +110,7 @@ type: plan
    run of right folds would say the run was right.
 6. **A closed fold is not offered.** `main.js`'s rest state already
    reads openEdges()
-   ([Plan 24, Decision 4](./24-gameplay-folds.md#decisions)), so a fold
+   ([Plan 24, Decision 4](../done/24-gameplay-folds.md#decisions)), so a fold
    into a closed state shows no Fold Button, lights nothing and is
    skipped by Left and Right. Its printed line stays on the paper.
 7. **The gameplay bar** is a `<div class="gameplay-bar" role="group"
@@ -139,7 +139,7 @@ type: plan
 
    A dead end reached by Undo or Redo says the same as one just
    pressed into. An active line's name
-   ([Plan 24, Decision 13](./24-gameplay-folds.md#decisions)) and a
+   ([Plan 24, Decision 13](../done/24-gameplay-folds.md#decisions)) and a
    hint's words (Decision 10) replace the text until the paper next
    comes to rest.
 9. **Out of lives, the design starts afresh.** When the paper rests
@@ -172,7 +172,7 @@ type: plan
 12. **A new game resets everything**: the lives, the hint, the closed
     states and the press count, whenever a Gameplay design or Gameplay
     Mode is chosen
-    ([Plan 24, Decision 12](./24-gameplay-folds.md#decisions)). Nothing
+    ([Plan 24, Decision 12](../done/24-gameplay-folds.md#decisions)). Nothing
     carries from one design to the next or survives a reload.
 13. **No performance step.** Every rule is a lookup in a graph built
     at load, run once per press, and nothing here runs per frame, per

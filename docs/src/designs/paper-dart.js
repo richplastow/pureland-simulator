@@ -34,24 +34,35 @@ export const PAPER_DART = Object.freeze({
   colorId: "orange",
   id: "paper-dart",
   steps: Object.freeze([
-    createFold(rimPoint(-CORNER_LINE_RADIANS), "all", APEX, "valley"),
-    createFold(APEX, "all", rimPoint(CORNER_LINE_RADIANS), "valley"),
-    createFold(rimPoint(-EDGE_LINE_RADIANS), "all", APEX, "valley"),
-    createFold(APEX, "all", rimPoint(EDGE_LINE_RADIANS), "valley"),
-    createFold(rimPoint(0), "all", APEX, "valley", { turns: "both-sides" }),
+    createFold(rimPoint(-CORNER_LINE_RADIANS), "all", APEX, "valley", {
+      name: "left corner",
+    }),
+    createFold(APEX, "all", rimPoint(CORNER_LINE_RADIANS), "valley", {
+      name: "right corner",
+    }),
+    createFold(rimPoint(-EDGE_LINE_RADIANS), "all", APEX, "valley", {
+      name: "left edge",
+    }),
+    createFold(APEX, "all", rimPoint(EDGE_LINE_RADIANS), "valley", {
+      name: "right edge",
+    }),
+    createFold(rimPoint(0), "all", APEX, "valley", {
+      name: "centre",
+      turns: "both-sides",
+    }),
     createFold(
       APEX,
       { movedBy: 4 },
       rimPoint(WING_LINE_RADIANS),
       "valley",
-      { targetRadians: WING_FOLD_RADIANS },
+      { name: "left wing", targetRadians: WING_FOLD_RADIANS },
     ),
     createFold(
       APEX,
       { heldBy: 4 },
       rimPoint(WING_LINE_RADIANS),
       "mountain",
-      { targetRadians: WING_FOLD_RADIANS },
+      { name: "right wing", targetRadians: WING_FOLD_RADIANS },
     ),
   ]),
 });

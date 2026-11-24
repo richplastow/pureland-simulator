@@ -36,8 +36,8 @@ const MAX_HALF_TURN_DENOMINATOR = 36;
 /** #### Reads a parsed design file into the frozen design it describes
  * - Builds the design a design module builds, `{ aspect, colorId, id,
  *   steps }`, its `id` the file's, with one fold step through every layer
- *   per step in the file. Its notes, the file's and each step's, are for
- *   people, and are dropped.
+ *   per step in the file, carrying the step's `name` when it has one. Its
+ *   notes, the file's and each step's, are for people, and are dropped.
  * - Resolves each coordinate, a fraction of the sheet's width for x and of
  *   its height for y, into metres by sheetSize(), and each `halfTurns`, a
  *   fraction of a half turn, into `targetRadians`, in radians.
@@ -46,7 +46,8 @@ const MAX_HALF_TURN_DENOMINATOR = 36;
  *   is neither `"mountain"` nor `"valley"`.
  * - Pure maths, with no DOM or GPU access.
  * @param file The parsed file: `aspect`, `colorId`, `format`, `id`,
- *   `steps`, and an optional `note`.
+ *   `steps`, and an optional `note`. Each step may carry a `name`, added
+ *   by hand, as the note is.
  * @returns The design, frozen, its steps too.
  */
 export const readDesignFile = (file) => {
@@ -60,12 +61,13 @@ export const readDesignFile = (file) => {
     readFraction(id, x, widthMeters),
     readFraction(id, y, heightMeters),
   ];
-  const steps = file.steps.map(({ from, halfTurns, to, type }) => {
+  const steps = file.steps.map(({ from, halfTurns, name, to, type }) => {
     if (!FOLD_TYPES.includes(type)) {
       throw new Error(`Design "${id}": unknown fold type "${type}"`);
     }
 
     return createFold(readPoint(from), "all", readPoint(to), type, {
+      name,
       targetRadians: readFraction(id, halfTurns, Math.PI),
     });
   });
@@ -134,6 +136,7 @@ export const toFraction = (value, unit, maxDenominator) => {
  *   `note` if one is given, and one step per fold: its `from` and `to`, each
  *   as fractions of the sheet's width and height; its `halfTurns`, the
  *   angle as a fraction of a half turn, `"1"` for flat; and its `type`.
+ *   It writes no `name`, since a session's folds have none.
  * - Fractions are in lowest terms, such as `"0"`, `"1/2"` or `"-3/8"`.
  *   Keys run A-Z, and the text is indented by two spaces.
  * - Throws a RangeError, from toFraction(), for a coordinate that is no

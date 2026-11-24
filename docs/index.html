@@ -29,6 +29,7 @@
       aria-label="A sheet of origami paper, which folds into designs or along a printed grid, and turns when dragged"
     ></canvas>
     <div class="controls">
+      <p class="status" role="status"></p>
       <div class="choices" role="radiogroup" aria-label="Mode">
         <label>
           <input type="radio" name="mode" value="presentation" />
@@ -98,7 +99,7 @@
           Oblong ¼
         </label>
       </div>
-      <div class="sandbox-bar" role="group" aria-label="Folds" hidden>
+      <div class="fold-bar" role="group" aria-label="Folds" hidden>
         <button type="button" data-undo disabled>Undo</button>
         <button type="button" data-redo disabled>Redo</button>
         <button type="button" data-unfold disabled>Unfold</button>

@@ -13,7 +13,7 @@ type: plan
   order. This one delivers the pure maths: which designs the mode
   offers, a path of a design's folds cut as a sheet, and each design's
   maze as a graph of states. [Plan 23](./23-gameplay-mode.md) puts the
-  mode on the page, [Plan 24](../todo/24-gameplay-folds.md) folds it, and
+  mode on the page, [Plan 24](./24-gameplay-folds.md) folds it, and
   [Plan 25](../todo/25-gameplay-game.md) adds dead ends, lives, hints and
   points.
 - Basic Gameplay Mode is the research's game at its smallest. Every
@@ -126,7 +126,7 @@ type: plan
    dart's centre fold is `"both-sides"` in Presentation Mode, which
    stands the folded dart edge-on to the viewer, off the folded plane;
    but the Sandbox's picking, lit lines and Fold Buttons, which
-   [Plan 24](../todo/24-gameplay-folds.md) reuses, all read the paper in that
+   [Plan 24](./24-gameplay-folds.md) reuses, all read the paper in that
    plane (`docs/src/input/pick.js`: "At rest every flat fold lies in
    that plane", read 2026-11-23). So in Gameplay Mode the dart folds in half as on a
    table, its left half over its right, its wing lines facing the
